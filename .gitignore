@@ -1,0 +1,20 @@
+# This .gitignore file should be placed at the root of your project directory
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+transformer/__pycache__/
+transformer/encoder/__pycache__/
+transformer/encoder/utils/__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+.python-version
+*.swp
+tb_*/
+cifar10/
+cifar100/
+tiny-imagenet-200/
