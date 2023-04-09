@@ -45,6 +45,14 @@ class VGG_SCPL_Block(VGG_Block):
     def _make_loss_layer(self, num_classes, proj_type=None, pred_type=None):
         return super()._make_loss_layer(num_classes, proj_type, pred_type=None)
 
+    def forward(self, x, y):
+        loss = 0
+        output = self.layer(x)
+        if self.training:
+            loss += self.loss(output, y)
+            output = output.detach()
+        return output, loss
+
 class VGG_Predictor(nn.Module):
     def __init__(self, num_classes, in_channels, shape, device=None):
         super(VGG_Predictor, self).__init__()
@@ -116,6 +124,17 @@ class resnet18_Block(nn.Module):
 class resnet18_SCPL_Block(resnet18_Block):
     def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type="m", pred_type=None, num_classes=None, device='cpu'):
         super(resnet18_SCPL_Block,self).__init__(cfg, shape, in_channels, avg_pool, proj_type, pred_type, num_classes, device)
+
+    def _make_loss_layer(self, num_classes, proj_type=None, pred_type=None):
+        return super()._make_loss_layer(num_classes, proj_type, pred_type=None)
+
+    def forward(self, x, y):
+        loss = 0
+        output = self.layer(x)
+        if self.training:
+            loss += self.loss(output, y)
+            output = output.detach()
+        return output, loss
 
 """ 修改自: https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
 class BasicBlock(nn.Module):

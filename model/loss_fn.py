@@ -127,7 +127,6 @@ class VisionLocalLoss(LocalLoss):
             deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
             print(info_str + deatch_str)
 
-
 class NLPLocalLoss(LocalLoss):
     def __init__(self, temperature=0.1, input_dim=300, hid_dim=300, out_dim=300,
                  num_classes=None, proj_type=None, pred_type=None, device=None):
@@ -140,7 +139,6 @@ class NLPLocalLoss(LocalLoss):
             info_str = "[Predictor Loss] Use local predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.hid_dim, self.num_classes, self.device)
             deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
             print(info_str + deatch_str)
-
 
 class NLP_Tail(nn.Module):
     def __init__(self, inp_dim, out_dim, hid_dim=100, act_fun = nn.Tanh(), device=None):
@@ -216,9 +214,7 @@ class ContrastiveLoss(nn.Module):
         x1 =  nn.functional.normalize(x1)
         label = label.view(-1, 1)
         batch_size = label.shape[0]
-        # mask = torch.eq(label, label.T).to(self.device, dtype=torch.float64)
-        # denom_mask = torch.scatter(torch.ones_like(mask), 1, torch.arange(batch_size).view(-1, 1), 0)
-        mask = torch.eq(label, label.T).type(self.tensor_type)#.float().to(self.device)
+        mask = torch.eq(label, label.T).type(self.tensor_type)
         denom_mask = torch.scatter(torch.ones_like(mask, device=x.device), 1, torch.arange(batch_size, device=x.device).view(-1, 1), 0)
         logits = torch.div(torch.matmul(x1, x1.T), self.temperature)
         logits_max, _ = torch.max(logits, dim=1, keepdim=True)

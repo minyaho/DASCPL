@@ -1,3 +1,5 @@
+"""Modified from https://github.com/ChengKai-Wang/Supervised-Contrastive-Parallel-Learning"""
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -116,7 +118,7 @@ class Flatten(nn.Module):
         return x.view(batch_size, -1)
     
 def add_noise_cifar(loader, noise_rate):
-    """ 參考自 https://github.com/PaulAlbert31/LabelNoiseCorrection """
+    """ Referenced from https://github.com/PaulAlbert31/LabelNoiseCorrection """
     torch.manual_seed(2)
     np.random.seed(42)
     noisy_labels = [sample_i for sample_i in loader.sampler.data_source.targets]

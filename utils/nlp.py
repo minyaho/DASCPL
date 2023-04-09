@@ -1,3 +1,5 @@
+"""Modified from https://github.com/Hibb-bb/AL"""
+
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -49,6 +51,8 @@ def get_data(args):
             tf = 'sentence'
             class_num = 2
             test_data = load_dataset(args['dataset'], split='validation')
+        else:
+            raise ValueError("Dataset not supported: {}".format(args['dataset']))
 
         train_text = [b[tf] for b in train_data]
         test_text = [b[tf] for b in test_data]

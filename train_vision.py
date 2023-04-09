@@ -1,85 +1,46 @@
 import torch
-import configparser
-import argparse
-
-import os
+import os, sys, argparse
 #os.environ['CUDA_LAUNCH_BLOCKING'] = 1
-import sys, time
-import numpy as np
-# from torch.utils.tensorboard import SummaryWriter
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = "0"
 from copy import deepcopy
 from utils import ResultMeter, ModelResultRecorder, SynchronizeTimer, StdoutWithLogger
-from utils import adjust_learning_rate, accuracy, gpu_setting, tb_record_gradient, setup_seed, calculate_GPUs_usage
-from utils.vision import set_loader
-
-from model.ResNet import resnet18, resnet18_AL, resnet18_SCPL, resnet18_PredSim
-from model.VGG import VGG, VGG_AL, VGG_SCPL, VGG_PredSim, VGG_SCPL_REWRITE
-from model.vanillaCNN import CNN, CNN_AL, CNN_SCPL, CNN_PredSim
-from model.vision_multi import VGG_BP_m, VGG_BP_p_m, VGG_SCPL_m, VGG_DASCPL_m
-from model.vision_multi import resnet18_BP_m, resnet18_BP_p_m, resnet18_SCPL_m, resnet18_DASCPL_m
+from utils import adjust_learning_rate, accuracy, gpu_setting, tb_record_gradient, setup_seed, calculate_GPUs_usage, check_config, model_save
 
 def get_args():
     parser = argparse.ArgumentParser('Vision SCPL training')
-    parser.add_argument('--times', type=int, help='word embedding dimension', default="1")
-    parser.add_argument('--train_bsz', type=int, help='word embedding dimension', default=64)
-    parser.add_argument('--test_bsz', type=int, help='word embedding dimension', default=64)
-    parser.add_argument('--dataset', type=str, help='word embedding dimension', default="cifar10")
-    parser.add_argument('--model', type=str, help='word embedding dimension', default="VGG_SCPL")
-    parser.add_argument('--gpus', type=str, help='word embedding dimension', default="0")
+    parser.add_argument('--model', type=str, help='Model name', default="VGG_BP_m")
+    parser.add_argument('--dataset', type=str, help='Dataset name', default="cifar10")
+    parser.add_argument('--times', type=int, help='Times of experiment', default="1")
+    parser.add_argument('--epochs', type=int, help='Number of epochs for training', default=200)
+    parser.add_argument('--train_bsz', type=int, help='Batch size of training data', default=1024)
+    parser.add_argument('--test_bsz', type=int, help='Batch size of test data', default=1024)
+    parser.add_argument('--base_lr', type=float, help='Initial learning rate', default=0.001)
+    parser.add_argument('--end_lr', type=float, help='Learning rate at the end of training', default=0.00001)
+    parser.add_argument('--gpus', type=str, help='ID of the GPU device. If you want to use multiple GPUs, \
+         you can separate them with commas, e.g., \"0,1\". The model type is Single GPU will only use first id.', default="0")
+    parser.add_argument('--seed', type=int, help='Random seed in the experiment. \
+        If you don\'t want to fix the random seed, you need to type "-1"', default="-1")
+    parser.add_argument('--multi_t', type=str, help='Multi-threaded on-off flag. On is \"true\". Off is \"false\"', default="true")
+    parser.add_argument('--proj_type', type=str, help='Projective head type in contrastive loss. \
+        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+    parser.add_argument('--pred_type', type=str, help='Predictor type in predict loss. \
+        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+    parser.add_argument('--save_path', type=str, help='Save path of the model log. \
+        There are many types of logs, such as training logs, model results (JSON) and tensorboard files. \"None\" means do not save.', default=None)
+    parser.add_argument('--profiler', type=str, help='Profiler of model. \
+        If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
+    parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (mulitGPU types only)', default="true")
 
-    parser.add_argument('--epochs', type=int, help='word embedding dimension', default="500")
-    parser.add_argument('--base_lr', type=float, help='word embedding dimension', default="0.001")
-    parser.add_argument('--end_lr', type=float, help='word embedding dimension', default="0.00001")
-    parser.add_argument('--seed', type=int, help='word embedding dimension', default="0")
-    parser.add_argument('--aug_type', type=str, help='word embedding dimension', default="strong")
-    parser.add_argument('--proj_type', type=str, help='the projective head type in contrastive loss. \"i\" is identity. \"l\" is linear. \"m\" is mlp.', default="m")
-    parser.add_argument('--pred_type', type=str, help='the predictor type in predictor loss.', default=None)
-    parser.add_argument('--save_path', type=str, help='save the result', default=None)
-    parser.add_argument('--multi_t', type=str, help='save the result', default="t")
-    parser.add_argument('--profile', type=str, help='save the result', default="f")
+    # Vision Options
+    parser.add_argument('--aug_type', type=str, help='Type of Data augmentation. \
+        Use \"basic\" augmentation like BP commonly used, or \"strong\" augmentation like contrastive learning used. Options: \"basic\", \"strong\"', default="strong")
 
     args = parser.parse_args()
 
     return args
 
-def read_config(args=None, config_path = "image_config.ini"):
+def read_config(args=None):
     configs = dict()
-
-    # model = 'resnet_SCPL_m'
-    # # CNN, CNN_AL, CNN_SCPL, CNN_PredSim, VGG, VGG_multiGPU, VGG_AL, 
-    # # VGG_SCPL, VGG_SCPL_REWRITE, VGG_SCPL_m, VGG_PredSim, 
-    # # resnet, resnet_AL, resnet_SCPL, resnet_PredSim, resnet_SCPL_m
-    # dataset = 'cifar100'
-    # # cifar10, cifar100 or tinyImageNet
-    # aug_type = "strong"
-    # # basic or strong
-    # train_bsz = 128
-    # test_bsz = 128
-    # epochs = 3
-    # base_lr = 0.001
-    # end_lr = 0.00001
-    # seed = 0
-    # layers = 4
-    # times = 5
-    # gpus = "0,1,3,4"
-    # save_path = None
-    # multi_thread = True
-
-    # configs['gpus'] = gpu_setting(gpu_list=gpus, layers_num=layers)
-
-    # configs['train_bsz'] = train_bsz
-    # configs['test_bsz'] = test_bsz
-    # configs['dataset'] = dataset
-    # configs['model'] = model
-    # configs['epochs'] = epochs
-    # configs['base_lr'] = base_lr
-    # configs['end_lr'] = end_lr
-    # configs['seed'] = seed
-    # configs['aug_type'] = aug_type
-    # configs['times'] = times
-    # configs["multi_thread"] = multi_thread 
-    # # configs['gpus'] = ['cuda:0','cuda:0','cuda:0','cuda:0']
 
     if args != None:
         configs['train_bsz'] = args.train_bsz
@@ -91,72 +52,79 @@ def read_config(args=None, config_path = "image_config.ini"):
         configs['end_lr'] = args.end_lr
         configs['seed'] = args.seed
         configs['aug_type'] = args.aug_type
-        configs['proj_type'] = None if (args.proj_type == None) or (args.proj_type == '') else args.proj_type.replace(' ', '').lower()
-        configs['pred_type'] = None if (args.pred_type == None) or (args.pred_type == '') else args.pred_type.replace(' ', '').lower()
+        configs['proj_type'] = None if (args.proj_type == None) or (args.proj_type.replace(' ', '').lower() in ['none', '']) else args.proj_type.replace(' ', '').lower()
+        configs['pred_type'] = None if (args.pred_type == None) or (args.pred_type.replace(' ', '').lower() in ['none', '']) else args.pred_type.replace(' ', '').lower()
         configs['times'] = args.times
-        configs["save_path"] = args.save_path
+        configs["save_path"] = None if (args.save_path == None) or (args.save_path.lower() == 'none') else args.save_path
         configs["gpu_ids"] = args.gpus
         configs["multi_t"] = True if args.multi_t.lower() in ['t', 'true'] else False
-        configs["profile"] = True if args.profile.lower() in ['t', 'true'] else False
+        configs["profiler"] = True if args.profiler.lower() in ['t', 'true'] else False
+        configs["train_eval"] = True if args.train_eval.lower() in ['t', 'true'] else False
         
         layers = 4
         assert layers==4, "layers are only 4"
         configs['layers'] = layers
         configs['gpus'] = gpu_setting(gpu_list=args.gpus, layers_num=layers)
 
-#     else:
-#         file = configparser.ConfigParser()
-#         file.read(config_path)
-#         dataset = file['data']['dataset']
-#         train_bsz = int(file['data']['train_batch_size'])
-#         test_bsz = int(file['data']['test_batch_size'])
-#         aug_type = file['data']['augmentation']
-#         model = file['model']['model']
-#         epochs = int(file['model']['epochs'])
-#         base_lr = float(file['model']['base_lr'])
-#         end_lr = float(file['model']['end_lr'])
-#         seed = float(file['model']['seed'])
-        
-#         configs['dataset'] = dataset
-#         configs['train_bsz'] = train_bsz
-#         configs['test_bsz'] = test_bsz
-#         configs['aug_type'] = aug_type
-#         configs['model'] = model
-#         configs['epochs'] = epochs
-#         configs['base_lr'] = base_lr
-#         configs['end_lr'] = end_lr
-#         configs['seed'] = seed
+        check_config(configs)
 
     return configs
 
 def set_model(name):
-    if name == "VGG":
+    # VGG - Single GPU
+    ## BP
+    if name == "VGG_BP":
         model = VGG
-    elif name == "VGG_BP_m":
-        model = VGG_BP_m
-    elif name == "VGG_BP_p_m":
-        model = VGG_BP_p_m
-    elif name == "VGG_AL":
-        model = VGG_AL
+    ## SCPL
     elif name == "VGG_SCPL":
         model = VGG_SCPL
     elif name == "VGG_SCPL_REWRITE":
         model = VGG_SCPL_REWRITE
-    elif name == "VGG_PredSim":
-        model = VGG_PredSim
-    elif name == "resnet":
+
+    # VGG - Multi-GPU
+    ## BP
+    elif name == "VGG_BP_m":
+        model = VGG_BP_m
+    elif name == "VGG_BP_p_m":
+        model = VGG_BP_p_m
+    ## SCPL
+    elif name == "VGG_SCPL_m":
+        model = VGG_SCPL_m
+    ## DASCPL
+    elif name == "VGG_DASCPL_m":
+        model = VGG_DASCPL_m
+
+    # ResNet - Single GPU 
+    ## BP
+    elif name == "resnet_BP":
         model = resnet18
+    ## SCPL
+    elif name == "resnet_SCPL":
+        model = resnet18_SCPL
+
+    # ResNet - Multi-GPU
+    ## BP
     elif name == "resnet_BP_m":
         model = resnet18_BP_m
     elif name == "resnet_BP_p_m":
         model = resnet18_BP_p_m
+    ## SCPL
+    elif name == "resnet_SCPL_m":
+        model = resnet18_SCPL_m
+    ## DASCPL
+    elif name == "resnet_DASCPL_m":
+        model = resnet18_DASCPL_m
+
+    # Other - Single GPU 
+    elif name == "VGG_AL":
+        model = VGG_AL
+    elif name == "VGG_PredSim":
+        model = VGG_PredSim
     elif name == "resnet_AL":
         model = resnet18_AL
-    elif name == "resnet_SCPL":
-        model = resnet18_SCPL
     elif name == "resnet_PredSim":
         model = resnet18_PredSim
-    elif name == "CNN":
+    elif name == "CNN_BP":
         model = CNN
     elif name == "CNN_AL":
         model = CNN_AL
@@ -164,14 +132,8 @@ def set_model(name):
         model = CNN_SCPL
     elif name == "CNN_PredSim":
         model = CNN_PredSim
-    elif name == "VGG_SCPL_m":
-        model = VGG_SCPL_m
-    elif name == "VGG_DASCPL_m":
-        model = VGG_DASCPL_m
-    elif name == "resnet_SCPL_m":
-        model = resnet18_SCPL_m
-    elif name == "resnet_DASCPL_m":
-        model = resnet18_DASCPL_m
+
+    # Unknow model
     else:
         raise ValueError("Model not supported: {}".format(name))
     
@@ -234,7 +196,7 @@ def train(train_loader, model, optimizer, global_steps, epoch, config):
         "Acc {5:.3f}\t".format(epoch, train_time.sum, eval_time.sum, data_time.sum, losses.avg, accs.avg))
     sys.stdout.flush()
 
-    return losses.avg, accs.avg, global_steps, train_time.sum, eval_time.sum
+    return losses.avg, [accs.avg], global_steps, train_time.sum, eval_time.sum
 
 def test(test_loader, model, epoch):
     model.eval()
@@ -270,14 +232,13 @@ def test(test_loader, model, epoch):
     
     sys.stdout.flush()
 
-    return accs.avg, eval_time.sum
+    return [accs.avg], eval_time.sum
 
-def train_multiGPU(train_loader, model, global_steps, epoch, multi_t=True):
+def train_multiGPU(train_loader, model, global_steps, epoch, multi_t=True, eval_flag=True):
     train_time = ResultMeter()
     eval_time = ResultMeter()
     data_time = ResultMeter()
     losses = ResultMeter()
-    # accs = ResultMeter()
     accs = [ResultMeter() for i in range(model.num_layers+1)]
 
     with SynchronizeTimer() as data_timer:
@@ -303,53 +264,39 @@ def train_multiGPU(train_loader, model, global_steps, epoch, multi_t=True):
             train_time.update(train_timer.runtime)
             losses.update(loss, bsz)
             
-            model.eval()
-            with SynchronizeTimer() as eval_timer:
-                with torch.no_grad():
-                    layer_outputs, true_Ys = model(X, Y)
-                # for idx, layer_y in enumerate(layer_outputs):
-                #     if idx == len(layer_outputs)-1: # last layer
-                #         acc = accuracy(layer_outputs[-1], true_Ys[-1])
-                #     elif layer_y != None:
-                #         acc = accuracy(layer_outputs[idx], true_Ys[idx])
-                #     else:
-                #         continue
-                    for idx in range(len(layer_outputs)):
-                        acc = accuracy(layer_outputs[idx], true_Ys[idx])
-                        accs[idx].update(acc.item(), bsz)
-                    
-                #     layer_outputs, true_Ys = model(X, Y)
-                # for idx, layer_y in enumerate(layer_outputs):
-                #     if idx == len(layer_outputs)-1: # last layer
-                #         acc = accuracy(layer_outputs[-1], true_Ys[-1])
-                #     elif layer_y != None:
-                #         # print(idx, layer_outputs[idx].shape, true_Ys[idx].shape)
-                #         acc = accuracy(layer_outputs[idx], true_Ys[idx])
-                #     else:
-                #         continue
-                #     accs[idx].update(acc.item(), bsz)
+            if eval_flag == True:
+                model.eval()
+                acc_temp = list()
+                with SynchronizeTimer() as eval_timer:
+                    with torch.no_grad():
+                        layer_outputs, true_Ys = model(X, Y)
+                        for idx in range(len(layer_outputs)):
+                            acc = accuracy(layer_outputs[idx], true_Ys[idx])
+                            acc_temp.append(acc)
+                for idx, acc in enumerate(acc_temp):
+                    accs[idx].update(acc.item(), bsz)
 
-            eval_time.update(eval_timer.runtime)       
-            # accs.update(acc.item(), bsz)
+                eval_time.update(eval_timer.runtime)  
+
             data_timer.start()
     
     new_accs = list()
     acc_str = ""
-    for acc in accs:
-        if acc.avg != 0: 
-            new_accs.append(acc.avg)
-            acc_str = acc_str + "{:6.3f} ".format(acc.avg)
+    if not eval_flag:
+        acc_str = "no eval."
+    else:
+        for acc in accs:
+            if acc.avg != 0: 
+                new_accs.append(acc.avg)
+                acc_str = acc_str + "{:6.3f} ".format(acc.avg)
 
     # print info
-    # (batch_time.avg)*len(train_loader)
-    # (data_time.avg)*len(train_loader)
     print("Train: {0}\t"
         "T_Time {1:.3f}\t"
         "E_Time {2:.3f}\t"
         "DT {3:.3f}\t"
         "loss {4:.3f}\t"
         "Acc {5}\t".format(epoch, train_time.sum, eval_time.sum, data_time.sum, losses.avg, acc_str))
-        # "Acc {5:.3f}\t".format(epoch, train_time.sum, eval_time.sum, data_time.sum, losses.avg, accs.avg))
     sys.stdout.flush()
 
     return losses.avg, new_accs, global_steps, train_time.sum, eval_time.sum
@@ -359,7 +306,6 @@ def eval_multiGPU(test_loader, model, epoch):
 
     data_time = ResultMeter()
     eval_time = ResultMeter()
-    # accs = ResultMeter()
     accs = [ResultMeter() for i in range(model.num_layers+1)]
 
     with torch.no_grad():
@@ -371,21 +317,13 @@ def eval_multiGPU(test_loader, model, epoch):
                 data_time.update(data_timer.runtime)
 
                 with SynchronizeTimer() as eval_timer:
-                    with torch.no_grad():
-                        layer_outputs, true_Ys = model(X, Y)
-                    # for idx, layer_y in enumerate(layer_outputs):
-                    #     if idx == len(layer_outputs)-1: # last layer
-                    #         acc = accuracy(layer_outputs[-1], true_Ys[-1])
-                    #     elif layer_y != None:
-                    #         acc = accuracy(layer_outputs[idx], true_Ys[idx])
-                    #     else:
-                    #         continue
-                        for idx in range(len(layer_outputs)):
-                            acc = accuracy(layer_outputs[idx], true_Ys[idx])
-                            accs[idx].update(acc.item(), bsz)
+                    layer_outputs, true_Ys = model(X, Y)
+
+                    for idx in range(len(layer_outputs)):
+                        acc = accuracy(layer_outputs[idx], true_Ys[idx])
+                        accs[idx].update(acc.item(), bsz)
 
                 eval_time.update(eval_timer.runtime)       
-                # accs.update(acc.item(), bsz)
                 data_timer.start()
 
     new_accs = list()
@@ -400,7 +338,6 @@ def eval_multiGPU(test_loader, model, epoch):
         "E_Time {1:.3f}\t"
         "DT {2:.3f}\t"
         "Acc {3}\t".format(epoch, eval_time.sum, data_time.sum, acc_str))
-        # "Acc {3:.3f}\t".format(epoch, eval_time.sum, data_time.sum, accs.avg))
     
     sys.stdout.flush()
 
@@ -421,6 +358,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
     
     if select_model.device_type == "multi":
         model = select_model(configs)
+        optimizer = None # Include to the module
     else:
         model = select_model(n_classes).cuda()
         optimizer = torch.optim.Adam(model.parameters(), lr=configs['base_lr'])
@@ -428,8 +366,11 @@ def main(times, conf, recorder: ModelResultRecorder==None):
     print("[Model Info] Model name: {}, Dataset: {}, ".format(model.__class__.__name__, configs['dataset']), end="")
     if select_model.device_type == "multi":
         print("Multi-thread: {}, ".format(configs["multi_t"]), end="")
+        print("Device: {}, ".format(configs["gpus"]), end="")
+    else:
+        print("Device: {}, ".format(configs["gpus"][0]), end="")
     print("Train_B: {}, Test_B: {}, D.A.: {}, ".format(configs['train_bsz'], configs['test_bsz'], configs['aug_type']), end="")
-    print("Epoch: {}, Seed: {}".format(configs['epochs'], configs['seed']))
+    print("Epoch: {}, Train eval: {}, Seed: {}".format(configs['epochs'], configs['train_eval'], configs['seed']))
 
     if recorder != None:
         writer = SummaryWriter(configs["save_path"]+'/tb_log_t({:03d})'.format(times))
@@ -454,7 +395,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
 
         if select_model.device_type == "multi":
             train_loss, train_acc, global_steps, train_time, train_eval_time = train_multiGPU(
-                train_loader, model, global_steps, epoch, configs["multi_t"])
+                train_loader, model, global_steps, epoch, configs["multi_t"], configs["train_eval"])
             tb_record_gradient(model=model.model, writer=writer, epoch=epoch)
         else:
             train_loss, train_acc, global_steps, train_time, train_eval_time = train(train_loader, model, optimizer, global_steps, epoch, configs)
@@ -493,14 +434,9 @@ def main(times, conf, recorder: ModelResultRecorder==None):
                 writer.add_scalar(f'model history/test_acc-{idx}', te_acc, epoch)
             writer.add_scalar(f'model history/test_time', test_time, epoch)
         
-    # state = {
-    #     "configs": configs,
-    #     "model": model.state_dict(),
-    #     "optimizer": optimizer.state_dict(),
-    #     "epoch": epoch,
-    # }
-    # save_files = os.path.join("./save_models/", "ckpt_last_{0}.pth".format(i))
-    # torch.save(state, save_files)
+    # # Save model
+    # if configs["save_path"] != None:
+    #     model_save(times, configs, model, configs["save_path"], optimizer=optimizer)
 
     # del state
     print("Best accuracy: {:.2f} / epoch: {}".format(best_acc, best_epoch))
@@ -520,6 +456,14 @@ if __name__ == '__main__':
     args = get_args()
     configs = read_config(args = args)
 
+    # Load packages
+    from utils.vision import set_loader
+    from model.ResNet import resnet18, resnet18_AL, resnet18_SCPL, resnet18_PredSim
+    from model.VGG import VGG, VGG_AL, VGG_SCPL, VGG_PredSim, VGG_SCPL_REWRITE
+    from model.vanillaCNN import CNN, CNN_AL, CNN_SCPL, CNN_PredSim
+    from model.vision_multi import VGG_BP_m, VGG_BP_p_m, VGG_SCPL_m, VGG_DASCPL_m
+    from model.vision_multi import resnet18_BP_m, resnet18_BP_p_m, resnet18_SCPL_m, resnet18_DASCPL_m
+
     run_times = configs['times']
 
     best_acc_meter = ResultMeter()
@@ -532,9 +476,10 @@ if __name__ == '__main__':
     if configs["save_path"] != None:
         from torch.utils.tensorboard import SummaryWriter
         recorder = ModelResultRecorder(model_name=configs['model'])
-        if configs["profile"] == True:
-            from model.nlp_multi_profile import LSTM_SCPL_m_d, LSTM_BP_m_d, Trans_SCPL_m_d, Trans_BP_m_d
-            print("[INFO] Results and model profile will be saved in \"{}*\" later".format(configs["save_path"]))
+        if configs["profiler"] == True:
+            from model.vision_multi_profiler import VGG_BP_m, VGG_BP_p_m, VGG_SCPL_m, VGG_DASCPL_m
+            from model.vision_multi_profiler import resnet18_BP_m, resnet18_BP_p_m, resnet18_SCPL_m, resnet18_DASCPL_m
+            print("[INFO] Results and model profiler will be saved in \"{}*\" later".format(configs["save_path"]))
         else:
             print("[INFO] Results will be saved in \"{}*\" later".format(configs["save_path"]))
         sys.stdout = StdoutWithLogger(configs["save_path"]+'.log') # Write log

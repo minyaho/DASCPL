@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from utils import ALComponent, SingleGPUModel
 from utils.vision import conv_layer_bn, Flatten
-from .vision_single import VGG_Block
+from .vision_single import VGG_SCPL_Block
 from .loss_fn import ContrastiveLoss, PredSimLoss
 
 class VGG(SingleGPUModel):
@@ -143,20 +143,12 @@ class VGG_AL(SingleGPUModel):
                 self.features = dim
         return nn.Sequential(*layers)
 
-class VGG_SCPL_Block(VGG_Block):
-    def __init__(self, cfg, shape, in_channels, num_classes=None, proj_type="m", pred_type=None, device=None):
-        super(VGG_SCPL_Block,self).__init__(cfg, shape, in_channels, num_classes, proj_type, pred_type, device)
-    
-    def _make_loss_layer(self, num_classes, proj_type=None, pred_type=None):
-        return super()._make_loss_layer(num_classes, proj_type, pred_type=None)
-
 class VGG_SCPL_REWRITE(SingleGPUModel):
     def __init__(self, num_classes = 10, device=None):
         super(VGG_SCPL_REWRITE, self).__init__()
         
         if device == None:
-            raise Exception("Model device setting error!")
-            # device = "cuda" if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         
         # print("VGG_SCPL_REWRITE",device)
         

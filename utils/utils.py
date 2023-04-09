@@ -9,6 +9,9 @@ import threading
 import time
 import sys
 
+class SingleGPUModel(nn.Module):
+    device_type = "single"
+
 class MultiGPUModel(nn.Module):
     device_type = "multi"
 
@@ -17,28 +20,63 @@ class MultiGPUModel(nn.Module):
             lr = opt.step(global_steps)
         return lr
 
-    def _loss_backward_update(self, layer_model:list, optimizer, hat_y:list, true_y:list, name=None):
-        assert type(layer_model)==list, 'Type error! Your input (layer_model) must be a list.'
-        assert type(true_y)==list, 'Type error! Your input (true_y) must be a list.'
-        assert type(hat_y)==list, 'Type error! Your input (hat_y) must be a list.'
+    def _loss_backward_update(self, layer_model:list, optimizer, hat_y:list, true_y:list, diff_device=False, name=None):
+        assert type(layer_model)==list, 'Arguments error! Your input (layer_model) must be a list.'
+        assert type(true_y)==list, 'Arguments error! Your input (true_y) must be a list.'
+        assert type(hat_y)==list, 'Arguments error! Your input (hat_y) must be a list.'
 
-        loss = 0
-        for i, layer in enumerate(layer_model):
-            loss += layer.loss(hat_y[i], true_y[i])
+        assert len(layer_model) == len(hat_y), 'Arguments error! Your input (hat_y) must be equal length of layer_model.\
+            But \"layer_model\" is {} and \"hat_y\" is {}'.format(len(layer_model), len(hat_y))
+        assert len(layer_model) == len(true_y), 'Arguments error! Your input (true_y) must be equal length of layer_model.\
+            But \"layer_model\" is {} and \"true_y\" is {}'.format(len(layer_model), len(true_y))
+
+        if diff_device:
+            loss = None
+            for i, layer in enumerate(layer_model):
+                _ = layer.loss(hat_y[i], true_y[i])
+                if loss == None:
+                    loss = _
+                else:
+                    loss += _.to(loss.device) if (_.device != loss.device) else _
+        else:
+            loss = 0
+            for i, layer in enumerate(layer_model):
+                loss += layer.loss(hat_y[i], true_y[i])
+        
         loss.backward()
         optimizer.step()
-
+                
         if name:
             print(name)
 
         return loss
+
     
 class ProfilerMultiGPUModel(MultiGPUModel):
-    def _loss_backward_update(self, layer_model, optimizer, hat_y, true_y, name=None):
+    def _loss_backward_update(self, layer_model:list, optimizer, hat_y:list, true_y:list, diff_device=False, name=None):
+        assert type(layer_model)==list, 'Arguments error! Your input (layer_model) must be a list.'
+        assert type(true_y)==list, 'Arguments error! Your input (true_y) must be a list.'
+        assert type(hat_y)==list, 'Arguments error! Your input (hat_y) must be a list.'
+
+        assert len(layer_model) == len(hat_y), 'Arguments error! Your input (hat_y) must be equal length of layer_model.\
+            But \"layer_model\" is {} and \"hat_y\" is {}'.format(len(layer_model), len(hat_y))
+        assert len(layer_model) == len(true_y), 'Arguments error! Your input (true_y) must be equal length of layer_model.\
+            But \"layer_model\" is {} and \"true_y\" is {}'.format(len(layer_model), len(true_y))
+
         with torch.profiler.record_function("loss"):
-            loss = 0
-            for i, layer in enumerate(layer_model):
-                loss += layer.loss(hat_y[i], true_y)
+            if diff_device:
+                loss = None
+                for i, layer in enumerate(layer_model):
+                    _ = layer.loss(hat_y[i], true_y[i])
+                    if loss == None:
+                        loss = _
+                    else:
+                        loss += _.to(loss.device) if (_.device != loss.device) else _
+            else:
+                loss = 0
+                for i, layer in enumerate(layer_model):
+                    loss += layer.loss(hat_y[i], true_y[i])
+
         with torch.profiler.record_function("backward"):
             loss.backward()
         with torch.profiler.record_function("update"):
@@ -48,9 +86,6 @@ class ProfilerMultiGPUModel(MultiGPUModel):
             print(name)
 
         return loss
-
-class SingleGPUModel(nn.Module):
-    device_type = "single"
 
 class ALComponent(nn.Module):
     """
@@ -109,22 +144,6 @@ class ALComponent(nn.Module):
         s0 = self.b(s)
         t0 = self.inv(s0)
         return t0
-    
-class AverageMeter(object):
-    def __init__(self):
-        self.reset()
-    
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-    
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val*n
-        self.count += n
-        self.avg = self.sum / self.count
 
 class ResultMeter(object):
     def __init__(self):
@@ -257,17 +276,8 @@ class CPUThread(threading.Thread):
         self.__result__ = self._target(*self._args, **self._kwargs)
 
     def get_result(self):
-        self.join() #當需要取得結果值的時候阻塞等待子執行緒完成
+        self.join()
         return self.__result__
-
-class Recorder(object):
-    def __init__(self, f_name):
-        self.recorder = list()
-        self.output_file_name = f_name
-        self.field_string_init()
-
-    def field_string_init(self):
-        pass
 
 def setup_seed(seed):
     if int(seed) == -1:
@@ -287,18 +297,21 @@ class ModelResultRecorder(object):
 
         self.model_hpyerparameter = dict()
         self.model_result = dict()
-        self.result_mean_std = dict()  
+        self.global_stats = dict()  
         self.model_train_history = dict()
+        self._train_acc = np.array([])
+        self._test_acc = np.array([])
 
         self._field_string_init()
 
     def _field_string_init(self):
         self.name = 'model name'
         self.hpyerparameter = "model hpyerparameter"
-        self.history = "times history"
+        self.times_history = "times history"
         self.times = 'times'
         self.best_test_acc = 'best test acc.'
         self.best_test_epoch = 'best epoch'
+        self.epoch ='epoch'
         self.epoch_train_time = 'epoch train time'
         self.epoch_train_eval_time = 'epoch_train eval time'
         self.epoch_test_time = 'epoch test time'
@@ -314,9 +327,16 @@ class ModelResultRecorder(object):
         self.train_eval_time = 'train eval. time'
         self.test_acc = 'test acc'
         self.test_time = 'test time'
-        self.epoch ='epoch'
         self.gpus_info = 'gpus info'
         self.gpus_ram = 'gpus ram'
+        self.stats = "stats"
+        self.epoch_train_acc = "epoch train acc"
+        self.epoch_test_acc = "epoch test acc"
+        self.times_train_acc = "times train acc"
+        self.times_test_acc = "times test acc"
+        self.max = "max"
+        self.pos = "pos" # position
+        self.raw_data = "raw_data"
 
     def add(self, times, best_test_acc, best_test_epoch, 
             epoch_train_time, epoch_train_eval_time,
@@ -362,7 +382,10 @@ class ModelResultRecorder(object):
                              epoch_train_times:ResultMeter, epoch_train_eval_times:ResultMeter, 
                              run_times:ResultMeter, gpu_ram:ResultMeter=None,
                              config:dict=dict()):
-        self.result_mean_std = {
+
+        self._make_times_stats()
+
+        self.global_stats = {
             self.best_test_acc + ' ' + self.mean: self.get_ResultMeter(best_test_accs, 'avg'),
             self.best_test_acc + ' ' + self.std: self.get_ResultMeter(best_test_accs, 'std'),
             self.best_test_epoch + ' ' + self.mean: self.get_ResultMeter(best_test_epochs, 'avg'),
@@ -378,13 +401,60 @@ class ModelResultRecorder(object):
         }
         self.model_hpyerparameter = config
 
+    def _make_times_stats(self):
+        _times_key = [key for key in self.model_train_history.keys()]
+        _epoch_key = [key for key in self.model_train_history[_times_key[0]].keys()]
+        _acc_key = [key for key in self.model_train_history[_times_key[0]][_epoch_key[0]][self.train_acc]]
+
+        # print("_times_key: {}".format(_times_key))
+        # print("_epoch_key: {}".format(_epoch_key))
+        # print("_acc_key: {}".format(_acc_key))
+
+        num_times = len(_times_key)
+        num_epoch = len(_epoch_key)
+        num_acc = len(_acc_key)
+
+        # print("num_times: {}, num_epoch: {}, num_acc: {}".format(num_times, num_epoch, num_acc))
+
+        _train_acc = np.zeros((num_times, num_epoch, num_acc))
+        _test_acc = np.zeros((num_times, num_epoch, num_acc))
+
+        for idx_times in range(num_times):
+            _time_history = self.model_train_history[idx_times]
+            for idx_epoch in range(1, num_epoch+1):
+                _epoch_history = _time_history[idx_epoch]
+                for idx_acc in range(num_acc):
+                    _train_acc[idx_times][idx_epoch-1][idx_acc] = _epoch_history[self.train_acc][idx_acc]
+                    _test_acc[idx_times][idx_epoch-1][idx_acc] = _epoch_history[self.test_acc][idx_acc]
+        
+        self.time_stats = {
+            self.times_train_acc + ' ' + self.mean: np.mean(_train_acc, axis=0).tolist(),
+            self.times_train_acc + ' ' + self.std: np.std(_train_acc, axis=0).tolist(),
+            self.times_test_acc + ' ' + self.mean: np.mean(_test_acc, axis=0).tolist(),
+            self.times_test_acc + ' ' + self.std: np.std(_test_acc, axis=0).tolist(),
+            self.times_train_acc + ' ' + self.max: _train_acc.max(1).tolist(),
+            self.times_train_acc + ' ' + self.pos: _train_acc.argmax(1).tolist(),
+            self.times_test_acc + ' ' + self.max: _test_acc.max(1).tolist(),
+            self.times_test_acc + ' ' + self.pos: _test_acc.argmax(1).tolist(),
+            self.times_test_acc + ' ' + self.max + ' ' + self.mean: _test_acc.max(1).mean(0).tolist(),
+            self.times_test_acc + ' ' + self.max + ' ' + self.std: _test_acc.max(1).std(0).tolist(),
+        }
+
+        self._train_acc = _train_acc
+        self._test_acc = _test_acc
+
     def _make_result(self):
         result = {
             self.name: self.model_name,
             self.hpyerparameter: self.model_hpyerparameter,
-            'statistics': self.result_mean_std,
-            self.history: self.model_result,
+            'statistics': self.global_stats,
+            self.times_history: self.model_result,
             self.train_history: self.model_train_history,
+            self.raw_data: {
+                self.times + ' ' + self.stats: self.time_stats,
+                "train": None if self._train_acc.shape[0] == 0 else self._train_acc.tolist(),
+                "test": None if self._test_acc.shape[0] == 0 else self._test_acc.tolist(),
+            }
         }
         return result
 
@@ -413,7 +483,6 @@ def tb_record_gradient(model, writer, epoch):
             if p.grad != None:
                 grad_norms.append(torch.norm(p.grad.detach(), 2))
         norm = torch.norm(torch.stack(grad_norms), 2) if len(grad_norms) != 0 else 0
-        # norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), 2) for p in module.parameters()]), 2)
         writer.add_scalar(f'gradient_info/layer-{name}', norm, epoch)
 
 class SynchronizeTimer(object):
@@ -491,3 +560,21 @@ class StdoutWithLogger(object):
 
     def getOldStdout(self):
         return self.terminal
+
+def check_config(configs):
+    assert configs['model'] != None, "You have not selected a model!"
+    assert configs['dataset']!= None, "You have not selected a dataset!"
+
+def model_save(times, configs, model, save_path, optimizer=None):
+    if optimizer == None:
+        optimizer = list()
+        for opt in model.opts:
+            optimizer.append(opt.state_dict())
+
+    state = {
+        "configs": configs,
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict() if optimizer != None else optimizer,
+    }
+    save_files = os.path.join(save_path, "ckpt_last_{0}.pth".format(times))
+    torch.save(state, save_files)

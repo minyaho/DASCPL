@@ -218,7 +218,9 @@ class LSTM_BP_p_m_d(LSTM_BP_m_d):
 
     def _init_data(self, configs):
         super()._init_data(configs)
+        self.proj_type = None
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def train_step(self, X, Y, multi_t=True):
         Xs = list()
@@ -272,7 +274,7 @@ class LSTM_BP_p_m_d(LSTM_BP_m_d):
             [model for model in self.model], 
             self.opts[-1].optimizer, 
             [layer_f for layer_f in layer_fs], 
-            [true_Y for true_Y in true_Ys]+[true_Ys[-1]])
+            [true_Y for true_Y in true_Ys]+[true_Ys[-1]], True)
         if not multi_t:
             gpu_losses.all(self._loss_backward_update(*args)) # GPU -1
         else:
@@ -332,6 +334,7 @@ class LSTM_SCPL_m_d(NLP_MultiGPU):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
 
     def _init_model(self, configs):
@@ -424,8 +427,8 @@ class LSTM_SCPL_m_d(NLP_MultiGPU):
             tasks.append(CPUThread(target=self._loss_backward_update, args=args))
             tasks[-1].start()
         
-        ## Forward: block i
         for i in range(1, self.num_layers-1):
+            ## Forward: block i
             if i == 1:
                 hat_Y, (h,c), _ = self.model[i](Xs[-1]) # Return output, hidden, mask
             else:
@@ -510,7 +513,9 @@ class LSTM_DASCPL_m_d(LSTM_SCPL_m_d):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
     
     def inference(self, X, Y):
         Xs = list()
@@ -672,10 +677,10 @@ class Trans_BP_m_d(NLP_MultiGPU):
 
         true_Y = Y.to(self.devices[-1])
 
+        # Forward: block 0
         Xs.append(X.to(self.devices[0], non_blocking=True))
         masks.append(mask.to(self.devices[0], non_blocking=True))
 
-        # Forward: block 0
         hat_Y, hidden, mask = self.model[0](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
         Xs.append(hat_Y.to(self.devices[1]))
         masks.append(mask.to(self.devices[1]))
@@ -705,7 +710,9 @@ class Trans_BP_p_m_d(Trans_BP_m_d):
 
     def _init_data(self, configs):
         super()._init_data(configs)
+        self.proj_type = None
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def train_step(self, X, Y, multi_t=True):
         mask = self.get_mask(X)
@@ -761,7 +768,7 @@ class Trans_BP_p_m_d(Trans_BP_m_d):
             [model for model in self.model], 
             self.opts[-1].optimizer, 
             [layer_f for layer_f in layer_fs], 
-            [true_Y for true_Y in true_Ys]+[true_Ys[-1]])
+            [true_Y for true_Y in true_Ys]+[true_Ys[-1]], True)
         if not multi_t:
             gpu_losses.append(self._loss_backward_update(*args)) # block -1
         else:
@@ -788,10 +795,10 @@ class Trans_BP_p_m_d(Trans_BP_m_d):
             true_Ys.append(Y.to(self.devices[i], non_blocking=True))
         true_Ys.append(Y.to(self.devices[-1], non_blocking=True))  # For predictor loss
 
+        # Forward: block 0
         Xs.append(X.to(self.devices[0], non_blocking=True))
         masks.append(mask.to(self.devices[0], non_blocking=True))
 
-        # Forward: block 0
         hat_Y, hidden, mask = self.model[0](Xs[-1], mask=masks[-1]) # Return output, hidden, mas
         layer_fs.append(self.model[0].loss(self.model[0].reduction(hat_Y, hidden, mask)))
         Xs.append(hat_Y.to(self.devices[1]))
@@ -799,7 +806,7 @@ class Trans_BP_p_m_d(Trans_BP_m_d):
 
         # Forward: block i
         for i in range(1, self.num_layers-1):
-            hat_Y, hiddsen, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
+            hat_Y, hidden, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
             layer_fs.append(self.model[i].loss(self.model[i].reduction(hat_Y, hidden, mask)))
             Xs.append(hat_Y.to(self.devices[i+1]))
             masks.append(mask.to(self.devices[i+1]))
@@ -824,6 +831,7 @@ class Trans_SCPL_m_d(NLP_MultiGPU):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
 
     def _init_model(self, configs):
@@ -972,17 +980,17 @@ class Trans_SCPL_m_d(NLP_MultiGPU):
 
         true_Ys.append(Y.to(self.devices[-1], non_blocking=True)) 
 
+        # Forward: block 0
         Xs.append(X.to(self.devices[0], non_blocking=True))
         masks.append(mask.to(self.devices[0], non_blocking=True))
 
-        # Forward: block 0
         hat_Y, hidden, mask = self.model[0](Xs[-1], mask=masks[-1]) # Return output, hidden, mas
         Xs.append(hat_Y.to(self.devices[1]))
         masks.append(mask.to(self.devices[1]))
 
         # Forward: block i
         for i in range(1, self.num_layers-1):
-            hat_Y, hiddsen, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
+            hat_Y, hidden, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
             Xs.append(hat_Y.to(self.devices[i+1]))
             masks.append(mask.to(self.devices[i+1]))
 
@@ -1005,7 +1013,9 @@ class Trans_DASCPL_m_d(Trans_SCPL_m_d):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def inference(self, X, Y):
         mask = self.get_mask(X)
@@ -1018,10 +1028,10 @@ class Trans_DASCPL_m_d(Trans_SCPL_m_d):
             true_Ys.append(Y.to(self.devices[i], non_blocking=True))
         true_Ys.append(Y.to(self.devices[-1], non_blocking=True))  # For predictor loss
 
+        # Forward: block 0
         Xs.append(X.to(self.devices[0], non_blocking=True))
         masks.append(mask.to(self.devices[0], non_blocking=True))
 
-        # Forward: block 0
         hat_Y, hidden, mask = self.model[0](Xs[-1], mask=masks[-1]) # Return output, hidden, mas
         layer_fs.append(self.model[0].loss(self.model[0].reduction(hat_Y, hidden, mask)))
         Xs.append(hat_Y.to(self.devices[1]))
@@ -1029,7 +1039,7 @@ class Trans_DASCPL_m_d(Trans_SCPL_m_d):
 
         # Forward: block i
         for i in range(1, self.num_layers-1):
-            hat_Y, hiddsen, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
+            hat_Y, hidden, mask = self.model[i](Xs[-1], mask=masks[-1]) # Return output, hidden, mask
             layer_fs.append(self.model[i].loss(self.model[i].reduction(hat_Y, hidden, mask)))
             Xs.append(hat_Y.to(self.devices[i+1]))
             masks.append(mask.to(self.devices[i+1]))

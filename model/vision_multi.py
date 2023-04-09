@@ -183,6 +183,7 @@ class VGG_BP_p_m(VGG_BP_m):
         super()._init_data(configs)
         self.proj_type = None
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def train_step(self, X, Y, multi_t=True):
         self.global_steps += 1
@@ -226,7 +227,7 @@ class VGG_BP_p_m(VGG_BP_m):
             [self.model[i] for i in range(self.num_layers+1)], 
             self.opts[-1].optimizer, 
             [hat_y0, hat_y1, hat_y2, hat_y3, hat_y4], 
-            [true_y0, true_y1, true_y2, true_y3, true_y3]
+            [true_y0, true_y1, true_y2, true_y3, true_y3], True
         )
         if not multi_t:
             gpu_losses.append(self._loss_backward_update(*args)) # Block 3
@@ -281,6 +282,7 @@ class VGG_SCPL_m(Vision_MultiGPU):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
 
     def _init_model(self, configs):
         self.shape = 32
@@ -433,7 +435,9 @@ class VGG_DASCPL_m(VGG_SCPL_m):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def inference(self, X, Y):
         layer_fs = list()
@@ -600,6 +604,7 @@ class resnet18_BP_p_m(resnet18_BP_m):
         super()._init_data(configs)
         self.proj_type = None
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def train_step(self, X, Y, multi_t=True):
         self.global_steps += 1
@@ -645,7 +650,7 @@ class resnet18_BP_p_m(resnet18_BP_m):
             [self.model[1], self.model[2], self.model[3], self.model[4], self.model[5]], 
             self.opts[-1].optimizer, 
             [hat_y1, hat_y2, hat_y3, hat_y4, hat_y5], 
-            [true_y0, true_y1, true_y2, true_y3, true_y3]
+            [true_y0, true_y1, true_y2, true_y3, true_y3], True
         )
 
         if not multi_t:
@@ -702,6 +707,7 @@ class resnet18_SCPL_m(Vision_MultiGPU):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
 
     def _init_model(self, configs):
         self.shape = 32
@@ -859,7 +865,9 @@ class resnet18_DASCPL_m(resnet18_SCPL_m):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
+        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
 
     def inference(self, X, Y):
         layer_fs = list()

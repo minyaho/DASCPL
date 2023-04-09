@@ -1,10 +1,11 @@
+"""Modified from https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
+
 import torch
 import torch.nn as nn
 from utils import ALComponent, SingleGPUModel
 from utils.vision import conv_layer_bn, Flatten
 from .loss_fn import ContrastiveLoss, PredSimLoss
 
-""" 修改自: https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
 class BasicBlock(nn.Module):
     expansion = 1
 
