@@ -38,12 +38,12 @@ $ conda activate dascpl # used before every time experiment
 ### Download Datasets
 
 #### Vision
-* Tiny-imagenet-200:  Download [here](). This zip file of tinyImageNet dataset processed under PyTorch ImageFolder format. 
+* Tiny-imagenet-200:  Download [here](https://drive.google.com/file/d/10wl7UjC47xuUZG5zdUwSwHP1tlV-Ubf7/view?usp=share_link). This zip file of tinyImageNet dataset processed under PyTorch ImageFolder format. 
   > Unzip the zip file, please use this command (`unzip tiny-imagenet-200.zip`).
   > Put the unzipped folder (`./tiny-imagenet-200`) in the root of your project.
 
 #### NLP
-* IMDB: Please download the dataset from [here]().
+* IMDB: Please download the dataset from [here](https://drive.google.com/file/d/1Z2iqiPKF5wYCgXR-Tc9ZnQqUFVkJvypA/view?usp=share_link).
   > Put this file (`IMDB_Dataset.csv`) in the root of your project.
 
 ### Download Word Embedding
@@ -52,7 +52,7 @@ $ conda activate dascpl # used before every time experiment
   # cd to the path of your project
   $ wget https://nlp.stanford.edu/data/glove.6B.zip
   $ unzip glove.6B.zip
-  # `glove.6B.300d.txt` must be put in the root of the project
+  # "glove.6B.300d.txt" must be put in the root of the project
   ```
 
 ## Quick Start
@@ -74,7 +74,7 @@ $ python train_vision.py [Options]
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.00001`| Learning rate at the end of training|
 |`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
-|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type "-1"|
+|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
 |`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
 |`--proj_type`|`None`| Projective head type in contrastive loss. `i` is identity. `l` is linear. `m` is mlp.|
 |`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
@@ -131,7 +131,7 @@ $ python train_nlp.py [Options]
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.001`| Learning rate at the end of training|
 |`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
-|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type "-1"|
+|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
 |`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
 |`--proj_type`|`None`| Projective head type in contrastive loss. `i` is identity. `l` is linear. `m` is mlp.|
 |`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
@@ -160,12 +160,19 @@ $ python train_nlp.py [Options]
   * `d`: Customize the number of layers.
   * `p`: Can set a predictor in this model.  You need to set the `pred_type`. All DSCPL type models have this option by default (not shown in the suffix).
 #### Dataset
-`ag_news`, `dbpedia_14`, `sst2`, `imdb`
 
-#### Projector type
+
+| Name | max_len |
+| ---- | ------- |
+| `sst2` | 15 |
+| `ag_news` | 60 |
+| `imdb`| 350 |
+| `dbpedia_14` | 400 |
+
+#### Projector Type
 This option is only available on **MultiGPU type** of SCPL or DASCPL.
 
-#### Predictor type
+#### Predictor Type
 This option is only available on **MultiGPU type** of DASCPL or p-suffix models.
 
 #### Example
