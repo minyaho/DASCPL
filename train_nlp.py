@@ -276,7 +276,7 @@ def train_multiGPU(train_loader, model, global_steps, epoch, multi_t=True, eval_
         acc_str = "no eval."
     else:
         for acc in accs:
-            if acc.avg != 0: 
+            if not acc.is_empty:  
                 new_accs.append(acc.avg)
                 acc_str = acc_str + "{:6.3f} ".format(acc.avg)
 
@@ -318,7 +318,7 @@ def eval_multiGPU(test_loader, model, epoch):
     new_accs = list()
     acc_str = ""
     for acc in accs:
-        if acc.avg != 0: 
+        if not acc.is_empty:  
             new_accs.append(acc.avg)
             acc_str = acc_str + "{:6.3f} ".format(acc.avg)
 

@@ -151,29 +151,49 @@ class ResultMeter(object):
 
     def reset(self):
         self.container = list()
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-        self.std =0
+
+    def update_by_list(self, _list):
+
+        for item in _list:
+            self.container.append(item)
         
     def update(self, val, n=1):
-
-        self.val = val
 
         for i in range(n):
             self.container.append(val)
 
-        self.count = len(self.container)
-        self.avg = np.mean(self.container)
-        self.std = np.std(self.container)
-        self.sum  = np.sum(self.container)
+    @property
+    def count(self):
+        return len(self.container)
+    
+    @property
+    def avg(self):
+        return np.mean(self.container)
+
+    @property
+    def std(self):
+        return np.std(self.container)
+    
+    @property
+    def sum(self):
+        return np.sum(self.container)
+    
+    @property
+    def len(self):
+        return len(self.container)
+    
+    @property
+    def is_empty(self):
+        if self.len == 0:
+            return True
+        else:
+            return False
 
     def __repr__(self):
-        return self.container
+        return self.container.__repr__()
 
     def __str__(self):
-        return str(self.container)
+        return self.container.__str__()
     
 def accuracy(output, target):
     with torch.no_grad():
