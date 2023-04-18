@@ -395,7 +395,7 @@ def make_projector(proj_type, inp_dim, hid_dim, out_dim, device):
         # MLP
         print("[CL Loss] Type: MLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device))
         return nn.Sequential(nn.Linear(inp_dim, hid_dim), nn.ReLU(), nn.Linear(hid_dim, out_dim))
-    elif 'BYOL' in proj_type:
+    elif 'byol' in proj_type:
         print("[CL Loss] Type: BYOL, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device))
         return nn.Sequential(nn.Linear(inp_dim, hid_dim, bias=False),
                                     nn.BatchNorm1d(hid_dim),
