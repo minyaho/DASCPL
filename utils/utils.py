@@ -300,13 +300,16 @@ class CPUThread(threading.Thread):
         return self.__result__
 
 def setup_seed(seed):
+    # https://pytorch.org/docs/stable/notes/randomness.html
     if int(seed) == -1:
+        # torch.backends.cudnn.benchmark = True # Restore benchmark to improve performance
         return "Random"
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     # random.seed(seed)
     torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False # Disable benchmark to ensure reproducibility
     return seed
 
 class ModelResultRecorder(object):

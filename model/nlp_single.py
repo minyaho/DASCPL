@@ -243,12 +243,14 @@ class LSTM_BP_d(SingleGPUModel):
         return out, loss
 
 class NLP_Block(nn.Module):
-    def __init__(self, inp_dim, out_dim, f, h_dim=300, word_vec=None, n_heads=None, proj_type=None, pred_type=None, num_classes=None, device=None):
+    def __init__(self, inp_dim, out_dim, f, h_dim=300, word_vec=None, n_heads=None, 
+                 proj_type=None, pred_type=None, num_classes=None, temperature=0.1, device=None):
         super(NLP_Block, self).__init__()
         self.inp_dim = inp_dim
         self.out_dim = out_dim
         self.h_dim = h_dim
         self.device = device
+        self.temperature = temperature
 
         self.layer = EncoderLayer(inp_dim=inp_dim, out_dim=out_dim, f=f, n_heads=n_heads, word_vec=word_vec) # embedding
         self._make_loss_layer(num_classes, proj_type, pred_type)
@@ -257,7 +259,7 @@ class NLP_Block(nn.Module):
         if (proj_type != None) or (pred_type != None):
             self.proj_type = proj_type
             self.pred_type = pred_type
-            self.loss = NLPLocalLoss(temperature=0.1, input_dim=self.h_dim, hid_dim=self.h_dim, out_dim=self.h_dim,
+            self.loss = NLPLocalLoss(temperature=self.temperature, input_dim=self.h_dim, hid_dim=self.h_dim, out_dim=self.h_dim,
                     num_classes=num_classes, proj_type=proj_type, pred_type=pred_type, device=self.device)
 
     def forward(self, x, hidden=None, mask=None):

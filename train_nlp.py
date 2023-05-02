@@ -42,6 +42,7 @@ def get_args():
     parser.add_argument('--vocab_size', type=int, help='Size of dictionary vocabulary', default="30000")
     parser.add_argument('--word_vec', type=str, help='Type of word embedding', default="glove")
     parser.add_argument('--emb_dim', type=int, help='Dimension of word embedding', default="300")
+    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss', default=0.1)
 
     args = parser.parse_args()
 
@@ -74,6 +75,7 @@ def read_config(args=None):
         configs["multi_t"] = True if args.multi_t.lower() in ['t', 'true'] else False
         configs["profiler"] = True if args.profiler.lower() in ['t', 'true'] else False
         configs["train_eval"] = True if args.train_eval.lower() in ['t', 'true'] else False
+        configs['temperature'] = args.temperature
 
         configs['gpus'] = gpu_setting(args.gpus, args.layers)
 

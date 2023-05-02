@@ -4,13 +4,14 @@ from utils.vision import conv_layer_bn, Flatten
 from .loss_fn import VisionLocalLoss
 
 class VGG_Block(nn.Module):
-    def __init__(self, cfg, shape, in_channels, num_classes=None, proj_type=None, pred_type=None, device=None):
+    def __init__(self, cfg, shape, in_channels, num_classes=None, proj_type=None, pred_type=None, temperature=0.1, device=None):
         super(VGG_Block, self).__init__()
         
         self.in_channels = in_channels
         self.device = device
         self.shape = shape
         self.out_channels = cfg[-2]
+        self.temperature = temperature
 
         self.layer = self._make_layer(cfg)
 
@@ -21,7 +22,7 @@ class VGG_Block(nn.Module):
             self.proj_type = proj_type
             self.pred_type = pred_type
             self.loss = VisionLocalLoss(
-                temperature=0.1, c_in = self.out_channels, shape = self.shape, 
+                temperature=self.temperature, c_in = self.out_channels, shape = self.shape, 
                 num_classes=num_classes, proj_type=proj_type, pred_type=pred_type, device=self.device)
 
     def forward(self, x):
@@ -87,13 +88,14 @@ class resnet18_Predictor(nn.Module):
         return output
 
 class resnet18_Block(nn.Module):
-    def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type=None, pred_type=None, num_classes=None, device='cpu'):
+    def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type=None, pred_type=None, num_classes=None, temperature=0.1, device='cpu'):
         super(resnet18_Block,self).__init__()
         self.shape = shape
         self.layer = self._make_layer(*cfg)
         self.device = device
         self.in_channels = in_channels
         self.out_channels = cfg[-2]
+        self.temperature = temperature
         self.avg_pool = avg_pool #nn.AdaptiveAvgPool2d((1, 1))
 
         self._make_loss_layer(num_classes, proj_type, pred_type)
@@ -103,7 +105,7 @@ class resnet18_Block(nn.Module):
             self.proj_type = proj_type
             self.pred_type = pred_type
             self.loss = VisionLocalLoss(
-                temperature=0.1, c_in = self.out_channels, shape = self.shape, 
+                temperature=self.temperature, c_in = self.out_channels, shape = self.shape, 
                 num_classes=num_classes, proj_type=proj_type, pred_type=pred_type, device=self.device)
 
     def _make_layer(self, in_channels, out_channels, strides):

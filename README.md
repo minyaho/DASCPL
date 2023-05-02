@@ -73,6 +73,7 @@ $ python train_vision.py [Options]
 |`--test_bsz`|`1024`| Batch size of test data|
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.00001`| Learning rate at the end of training|
+|`--temperature`|`0.1`|Temperature parameter of contrastive loss|
 |`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
 |`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
 |`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
@@ -111,7 +112,8 @@ $ python train_vision.py \
   --base_lr=0.001 --end_lr=0.00001 \
   --epochs=200 --seed=-1 \
   --multi_t="true" --gpus="0" \
-  --proj_type="m" --aug_type="strong"
+  --proj_type="m" --aug_type="strong" \
+  --temperature=0.1
 ```
 
 ### NLP
@@ -130,6 +132,7 @@ $ python train_nlp.py [Options]
 |`--test_bsz`|`1024`| Batch size of test data|
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.001`| Learning rate at the end of training|
+|`--temperature`|`0.1`|Temperature parameter of contrastive loss|
 |`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
 |`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
 |`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
@@ -184,5 +187,6 @@ $ python train_nlp.py \
   --epochs=50 --seed=-1 \
   --multi_t="true" --gpus="0" \
   --proj_type="i" --max_len=60 \
-  --h_dim=300 --layers=4
+  --h_dim=300 --layers=4 \
+  --temperature=0.1
 ```

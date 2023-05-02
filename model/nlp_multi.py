@@ -336,6 +336,7 @@ class LSTM_SCPL_m_d(NLP_MultiGPU):
         self.proj_type = configs['proj_type']
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
+        self.temperature = configs['temperature']
 
     def _init_model(self, configs):
         # Setting Model
@@ -345,19 +346,22 @@ class LSTM_SCPL_m_d(NLP_MultiGPU):
 
         # Embedding
         self.layer_cfg[0] = {
-            "inp_dim":self.vocab_size, "out_dim":self.emb_dim, "f":"emb", "h_dim":self.h_dim, "word_vec":self.word_vec, 
-            "device":self.devices[0], "proj_type":self.proj_type, "pred_type":self.pred_type, "num_classes":self.num_classes}
+            "inp_dim":self.vocab_size, "out_dim":self.emb_dim, "f":"emb", "h_dim":self.h_dim, 
+            "word_vec":self.word_vec, "temperature": self.temperature, "device":self.devices[0], 
+            "proj_type":self.proj_type, "pred_type":self.pred_type, "num_classes":self.num_classes}
 
         # LSTM
         for i in range(self.num_layers-1):
             if i == 0:
                 self.layer_cfg[i+1] = {
                     "inp_dim":self.emb_dim, "out_dim":self.h_dim, "f":"lstm", "h_dim":self.h_dim, "word_vec":None, 
-                    "device":self.devices[i+1], "proj_type":self.proj_type, "pred_type":self.pred_type, "num_classes":self.num_classes}
+                    "temperature": self.temperature, "device":self.devices[i+1], "proj_type":self.proj_type, 
+                    "pred_type":self.pred_type, "num_classes":self.num_classes}
             else:
                 self.layer_cfg[i+1] = {
                     "inp_dim":self.h_dim*2, "out_dim":self.h_dim, "f":"lstm", "h_dim":self.h_dim, "word_vec":None, 
-                    "device":self.devices[i+1], "proj_type":self.proj_type, "pred_type":self.pred_type, "num_classes":self.num_classes}
+                    "temperature": self.temperature,  "device":self.devices[i+1], "proj_type":self.proj_type, 
+                    "pred_type":self.pred_type, "num_classes":self.num_classes}
         
         # Predict
         self.layer_cfg[self.num_layers] = {
@@ -516,6 +520,7 @@ class LSTM_DASCPL_m_d(LSTM_SCPL_m_d):
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
         assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.temperature = configs['temperature']
     
     def inference(self, X, Y):
         Xs = list()
@@ -833,6 +838,7 @@ class Trans_SCPL_m_d(NLP_MultiGPU):
         self.proj_type = configs['proj_type']
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
+        self.temperature = configs['temperature']
 
     def _init_model(self, configs):
         # Setting Model
@@ -843,15 +849,17 @@ class Trans_SCPL_m_d(NLP_MultiGPU):
 
         # Embedding
         self.layer_cfg[0] = {
-            "inp_dim":self.vocab_size, "out_dim":self.emb_dim, "f":"emb", "h_dim":self.emb_dim, "num_classes":self.num_classes, 
-            "word_vec":self.word_vec, "device":self.devices[0], "proj_type":self.proj_type, "pred_type":self.pred_type}
+            "inp_dim":self.vocab_size, "out_dim":self.emb_dim, "f":"emb", "h_dim":self.emb_dim, 
+            "num_classes":self.num_classes, "temperature": self.temperature, "word_vec":self.word_vec, 
+            "device":self.devices[0], "proj_type":self.proj_type, "pred_type":self.pred_type}
 
         # Transformer
         for i in range(1, self.num_layers):
             self.layer_cfg[i] = {
                 "inp_dim":self.emb_dim, "out_dim":self.h_dim, 
                 "f":"trans", "h_dim":self.emb_dim, "n_heads":self.n_heads, "num_classes":self.num_classes, 
-                "word_vec":None, "device":self.devices[i], "proj_type":self.proj_type, "pred_type":self.pred_type}
+                "temperature": self.temperature, "word_vec":None, 
+                "device":self.devices[i], "proj_type":self.proj_type, "pred_type":self.pred_type}
 
         # Predict
         self.layer_cfg[self.num_layers] = {
@@ -1016,6 +1024,7 @@ class Trans_DASCPL_m_d(Trans_SCPL_m_d):
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
         assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.temperature = configs['temperature']
 
     def inference(self, X, Y):
         mask = self.get_mask(X)

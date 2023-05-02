@@ -120,7 +120,7 @@ class VisionLocalLoss(LocalLoss):
 
         self.input_dim = int(c_in * shape * shape)
         if self.proj_type != None:
-            self.projector = nn.Sequential(Flatten(), make_projector(self.proj_type, self.input_dim, self.hid_dim, self.out_dim, self.device))
+            self.projector = nn.Sequential(Flatten(), make_projector(self.proj_type, self.input_dim, self.hid_dim, self.out_dim, self.device, temperature=self.temperature))
         if (self.pred_type != None) and ("none" not in self.pred_type):
             self.predictor = Vision_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.hid_dim, device=self.device)
             info_str = "[Predictor Loss] Use local predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.hid_dim, self.num_classes, self.device)
@@ -133,7 +133,7 @@ class NLPLocalLoss(LocalLoss):
 
         super(NLPLocalLoss, self).__init__(temperature, input_dim, hid_dim, out_dim , num_classes, proj_type, pred_type, device)
         if self.proj_type != None:
-            self.projector = make_projector(self.proj_type, self.input_dim, self.out_dim, self.hid_dim, self.device)
+            self.projector = make_projector(self.proj_type, self.input_dim, self.out_dim, self.hid_dim, self.device, temperature=self.temperature)
         if self.pred_type != None:
             self.predictor = NLP_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.hid_dim ,device=self.device)
             info_str = "[Predictor Loss] Use local predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.hid_dim, self.num_classes, self.device)
@@ -382,27 +382,33 @@ class Flatten(nn.Module):
         batch_size = x.shape[0]
         return x.view(batch_size, -1)
 
-def make_projector(proj_type, inp_dim, hid_dim, out_dim, device):
+def make_projector(proj_type, inp_dim, hid_dim, out_dim, device, temperature=None):
     if "i" in proj_type:
         # Identity function
         print("[CL Loss] Type: Identity function, Device: {}".format(device))
         return nn.Identity()
     elif "l" in proj_type:
         # Linear
-        print("[CL Loss] Type: Linear, in_dim: {}, out_dim: {}, Device: {}".format(inp_dim, out_dim, device))
+        print("[CL Loss] Type: Linear, in_dim: {}, out_dim: {}, Device: {}".format(inp_dim, out_dim, device), end="")
+        print(", Temperature: {}".format(temperature) if temperature != None else "\n")
         return nn.Sequential(nn.Linear(inp_dim, out_dim))
     elif "m" in proj_type:
         # MLP
-        print("[CL Loss] Type: MLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device))
-        return nn.Sequential(nn.Linear(inp_dim, hid_dim), nn.ReLU(), nn.Linear(hid_dim, out_dim))
-    elif 'byol' in proj_type:
-        print("[CL Loss] Type: BYOL, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device))
+        print("[CL Loss] Type: MLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device), end="")
+        print(", Temperature: {}".format(temperature) if temperature != None else "\n")
+        return nn.Sequential(nn.Linear(inp_dim, hid_dim), 
+                             nn.ReLU(), 
+                             nn.Linear(hid_dim, out_dim))
+    elif 'mb' in proj_type:
+        print("[CL Loss] Type: MLP with BN, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device), end="")
+        print(", Temperature: {}".format(temperature) if temperature != None else "\n")
         return nn.Sequential(nn.Linear(inp_dim, hid_dim, bias=False),
-                                    nn.BatchNorm1d(hid_dim),
-                                    nn.ReLU(inplace=True), # hidden layer
-                                    nn.Linear(hid_dim, out_dim)) # output layer
+                             nn.BatchNorm1d(hid_dim),
+                             nn.ReLU(inplace=True), # hidden layer
+                             nn.Linear(hid_dim, out_dim)) # output layer
     elif 'SimSiamMLP' in proj_type:
-        print("[CL Loss] Type: SimSiamMLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device))
+        print("[CL Loss] Type: SimSiamMLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, out_dim, hid_dim, device), end="")
+        print(", Temperature: {}".format(temperature) if temperature != None else "\n")
         return nn.Sequential(
             nn.Linear(inp_dim, hid_dim, bias=False),
             nn.BatchNorm1d(hid_dim),

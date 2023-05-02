@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 from utils import ALComponent, SingleGPUModel
-from utils.vision import conv_layer_bn, Flatten
+from utils.vision import conv_1x1_bn, conv_layer_bn, Flatten
 from .loss_fn import ContrastiveLoss, PredSimLoss
 
 class BasicBlock(nn.Module):
@@ -19,7 +19,8 @@ class BasicBlock(nn.Module):
 
         # the shortcut output dimension is not the same with residual function
         if stride != 1:
-            self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False)
+            # self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False) # Original SCPL settings
+            self.shortcut = conv_1x1_bn(in_channels, out_channels, None, stride, False) # New settings
 
     def forward(self, x):
         out = self.conv1(x)

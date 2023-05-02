@@ -319,6 +319,7 @@ class VGG_SCPL_m(Vision_MultiGPU):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        self.temperature = configs['temperature']
 
     def _init_model(self, configs):
         self.shape = 32
@@ -327,16 +328,16 @@ class VGG_SCPL_m(Vision_MultiGPU):
 
         self.model_cfg = {
             'backbone-0': {
-                "cfg":self.layer_cfg[0], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[0], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":3,"proj_type":self.proj_type,"pred_type":self.pred_type,"device":self.devices[0]},
             'backbone-1': {
-                "cfg":self.layer_cfg[1], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[1], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[0][-2],"proj_type":self.proj_type,"pred_type":self.pred_type,"device":self.devices[1]},
             'backbone-2': {
-                "cfg":self.layer_cfg[2], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[2], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[1][-2],"proj_type":self.proj_type,"pred_type":self.pred_type,"device":self.devices[2]},
             'backbone-3': {
-                "cfg":self.layer_cfg[3], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[3], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[2][-2],"proj_type":self.proj_type,"pred_type":self.pred_type,"device":self.devices[3]},
             'predictor': {
                 "shape":self.shape, "num_classes":self.num_classes,"in_channels":self.layer_cfg[3][-2], "device":self.devices[3]}
@@ -492,6 +493,7 @@ class VGG_DASCPL_m(VGG_SCPL_m):
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
         assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.temperature = configs['temperature']
 
     def inference(self, X, Y):
         with torch.profiler.record_function("Init"):
@@ -799,6 +801,7 @@ class resnet18_SCPL_m(Vision_MultiGPU):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        self.temperature = configs['temperature']
 
     def _init_model(self, configs):
         self.shape = 32
@@ -808,16 +811,16 @@ class resnet18_SCPL_m(Vision_MultiGPU):
         self.model_cfg = {
             'head': {"device": self.devices[0]},
             'backbone-0': {
-                "cfg":self.layer_cfg[0], "shape":self.shape, "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[0], "shape":self.shape, "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[0][1], "proj_type":self.proj_type, "pred_type":self.pred_type, "device":self.devices[0]},
             'backbone-1': {
-                "cfg":self.layer_cfg[1], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[1], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[1][1], "proj_type":self.proj_type, "pred_type":self.pred_type, "device":self.devices[1]},
             'backbone-2': {
-                "cfg":self.layer_cfg[2], "shape":self._shape_div_2(), "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[2], "shape":self._shape_div_2(), "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[2][1], "proj_type":self.proj_type, "pred_type":self.pred_type, "device":self.devices[2]},
             'backbone-3': {
-                "cfg":self.layer_cfg[3], "shape":1, "num_classes":self.num_classes,
+                "cfg":self.layer_cfg[3], "shape":1, "num_classes":self.num_classes, "temperature": self.temperature,
                 "in_channels":self.layer_cfg[3][1], "proj_type":self.proj_type, "pred_type":self.pred_type,
                 "avg_pool":torch.nn.AdaptiveAvgPool2d((1, 1)), "device":self.devices[3]},
             'predictor': {
@@ -977,6 +980,7 @@ class resnet18_DASCPL_m(resnet18_SCPL_m):
         assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
         assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.temperature = configs['temperature']
 
     def inference(self, X, Y):
         with torch.profiler.record_function("Init"):

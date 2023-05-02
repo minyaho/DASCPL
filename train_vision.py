@@ -30,6 +30,7 @@ def get_args():
     parser.add_argument('--profiler', type=str, help='Profiler of model. \
         If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
     parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (mulitGPU types only)', default="true")
+    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss', default=0.1)
 
     # Vision Options
     parser.add_argument('--aug_type', type=str, help='Type of Data augmentation. \
@@ -60,6 +61,7 @@ def read_config(args=None):
         configs["multi_t"] = True if args.multi_t.lower() in ['t', 'true'] else False
         configs["profiler"] = True if args.profiler.lower() in ['t', 'true'] else False
         configs["train_eval"] = True if args.train_eval.lower() in ['t', 'true'] else False
+        configs['temperature'] = args.temperature
         
         layers = 4
         assert layers==4, "layers are only 4"
