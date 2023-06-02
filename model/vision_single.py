@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils.vision import conv_layer_bn, Flatten
+from utils.vision import conv_1x1_bn, conv_layer_bn, Flatten
 from .loss_fn import VisionLocalLoss
 
 class VGG_Block(nn.Module):
@@ -138,9 +138,10 @@ class resnet18_SCPL_Block(resnet18_Block):
             output = output.detach()
         return output, loss
 
-""" 修改自: https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
+"""Modified from https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
 class BasicBlock(nn.Module):
     expansion = 1
+
     def __init__(self, in_channels, out_channels, stride=1):
         super(BasicBlock, self).__init__()
         self.conv1 = conv_layer_bn(in_channels, out_channels, nn.LeakyReLU(inplace=True), stride, False)
@@ -151,7 +152,8 @@ class BasicBlock(nn.Module):
 
         # the shortcut output dimension is not the same with residual function
         if stride != 1:
-            self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False)
+            self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False) # Original SCPL settings
+            # self.shortcut = conv_1x1_bn(in_channels, out_channels, None, stride, False) # New settings. Maybe this is the correct setting for ResNet18
 
     def forward(self, x):
         out = self.conv1(x)

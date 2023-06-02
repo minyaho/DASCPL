@@ -19,15 +19,14 @@ class BasicBlock(nn.Module):
 
         # the shortcut output dimension is not the same with residual function
         if stride != 1:
-            # self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False) # Original SCPL settings
-            self.shortcut = conv_1x1_bn(in_channels, out_channels, None, stride, False) # New settings
+            self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False) # Original SCPL settings
+            # self.shortcut = conv_1x1_bn(in_channels, out_channels, None, stride, False) # New settings. Maybe this is the correct setting for ResNet18
 
     def forward(self, x):
         out = self.conv1(x)
         out = self.conv2(out)
         out = self.relu(out + self.shortcut(x))
         return out
-
 
 class resnet18(SingleGPUModel):
     def __init__(self, num_classes=100):

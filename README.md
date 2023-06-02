@@ -44,6 +44,7 @@ $ conda activate dascpl # used before every time experiment
 
 #### NLP
 * IMDB: Please download the dataset from [here](https://drive.google.com/file/d/1Z2iqiPKF5wYCgXR-Tc9ZnQqUFVkJvypA/view?usp=share_link).
+  
   > Put this file (`IMDB_Dataset.csv`) in the root of your project.
 
 ### Download Word Embedding
@@ -81,7 +82,9 @@ $ python train_vision.py [Options]
 |`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
 |`--save_path`|`None`| Save path of the model log. There are many types of logs, such as training logs, model results (JSON) and tensorboard files. "None" means do not save.|
 |`--profiler`|`false`| Profiler of model. If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save.|
-|`--train_eval`|`ture`| On-off flag for evaluation behavior during training. |
+|`--train_eval`|`ture`| On-off flag for evaluation behavior during training. (mulitGPU types only) |
+|`--train_eval_times`|`1`| The number of epoch intervals to evaluate a training. |
+|`--temperature`|`0.1`| Temperature parameter of contrastive loss. |
 |`--aug_type`|`strong`| Type of Data augmentation. Use **basic** augmentation like BP commonly used, or **strong** augmentation like contrastive learning used. </br> Options: `basic`, `strong` |
 
 #### Model
@@ -140,14 +143,17 @@ $ python train_nlp.py [Options]
 |`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
 |`--save_path`|`None`| Save path of the model log. There are many types of logs, such as training logs, model results (JSON) and tensorboard files. "None" means do not save.|
 |`--profiler`|`false`| Profiler of model. If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save.|
-|`--train_eval`|`ture`| On-off flag for evaluation behavior during training |
+|`--train_eval`|`ture`| On-off flag for evaluation behavior during training. (mulitGPU types only) |
+|`--train_eval_times`|`1`| The number of epoch intervals to evaluate a training. |
+|`--temperature`|`0.1`| Temperature parameter of contrastive loss. |
 |`--max_len`|`60`| Maximum length for the sequence of input samples |
 |`--h_dim`|`300`|Dimensions of the hidden layer|
 |`--layers`|`4`|Number of layers of the model. The minimum is `2`. Because the first layer is the pre-training embedding layer, and the latter layer is lstm or transformer.|
 |`--heads`|`6`|Number of heads of transformer encoder. This option is only available on transformer.|
 |`--vocab_size`|`30000`|Size of dictionary vocabulary|
-|`--word_vec`|`glove`|Type of word embedding|
-|`--emb_dim`|`300`|Dimension of word embedding|
+|`--word_vec`|`glove`| Type of word embedding |
+|`--emb_dim`|`300`| Dimension of word embedding |
+|`--noise_rate`|`0.0`| Noise rate of labels in training dataset (default is 0 for no noise). |
 
 #### Model
 * `LSTM`

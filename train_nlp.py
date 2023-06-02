@@ -31,6 +31,10 @@ def get_args():
     parser.add_argument('--profiler', type=str, help='Profiler of model. \
         If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
     parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (mulitGPU types only)', default="true")
+    parser.add_argument('--train_eval_times', type=int, help='The number of epoch intervals to evaluate a training.', default=1)
+    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
+    parser.add_argument('--noise_rate', type=float, help='Noise rate of labels in training dataset (default is 0 for no noise).', default=0.0)
+    parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
 
     # NLP Options
     parser.add_argument('--max_len', type=int, help='Maximum length for the sequence of input samples', default="60")
@@ -42,7 +46,6 @@ def get_args():
     parser.add_argument('--vocab_size', type=int, help='Size of dictionary vocabulary', default="30000")
     parser.add_argument('--word_vec', type=str, help='Type of word embedding', default="glove")
     parser.add_argument('--emb_dim', type=int, help='Dimension of word embedding', default="300")
-    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss', default=0.1)
 
     args = parser.parse_args()
 
@@ -75,7 +78,10 @@ def read_config(args=None):
         configs["multi_t"] = True if args.multi_t.lower() in ['t', 'true'] else False
         configs["profiler"] = True if args.profiler.lower() in ['t', 'true'] else False
         configs["train_eval"] = True if args.train_eval.lower() in ['t', 'true'] else False
+        configs["train_eval_times"] = args.train_eval_times
         configs['temperature'] = args.temperature
+        configs['noise_rate'] = args.noise_rate
+        configs['speedup'] = True if args.speedup.lower() in ['t', 'true'] else False
 
         configs['gpus'] = gpu_setting(args.gpus, args.layers)
 
@@ -111,6 +117,8 @@ def set_model(name):
         model = LSTM_SCPL_m_d
     elif name == "LSTM_DASCPL_m_d":
         model = LSTM_DASCPL_m_d
+    elif name == "LSTM_EE_m_d":
+        model = LSTM_EE_m_d
     elif name == "LSTM_SCPL_m_4":
         model = LSTM_SCPL_m_4
 
@@ -141,6 +149,8 @@ def set_model(name):
         model = Trans_SCPL_m_d
     elif name == "Trans_DASCPL_m_d":
         model = Trans_DASCPL_m_d
+    elif name == "Trans_EE_m_d":
+        model = Trans_EE_m_d
     elif name == "Trans_SCPL_m_4":
         model = Trans_SCPL_m_4
     else:
@@ -336,7 +346,7 @@ def eval_multiGPU(test_loader, model, epoch):
 
 def main(times, conf, recorder: ModelResultRecorder==None):
     configs = deepcopy(conf)
-    configs['seed'] = setup_seed(configs['seed'])
+    configs['seed'] = setup_seed(configs)
     
     train_loader, test_loader, n_classes, vocab = get_data(configs)
     word_vec = get_word_vector(vocab, configs['word_vec'])
@@ -378,8 +388,12 @@ def main(times, conf, recorder: ModelResultRecorder==None):
     global_steps = 0
     best_acc = 0
     best_epoch = 0
+    train_eval_flag = False
     
     for epoch in range(1, configs['epochs'] + 1):
+
+        if configs["train_eval"] == True:
+            train_eval_flag = ((epoch%configs["train_eval_times"])==0)
 
         if select_model.device_type == "multi":
             lr = model.opt_step(global_steps)
@@ -390,7 +404,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
 
         if select_model.device_type == "multi":
             train_loss, train_acc, global_steps, train_time, train_eval_time = train_multiGPU(
-                train_loader, model, global_steps, epoch, configs["multi_t"], configs["train_eval"])
+                train_loader, model, global_steps, epoch, configs["multi_t"], train_eval_flag)
             tb_record_gradient(model=model.model, writer=writer, epoch=epoch)
         else:
             train_loss, train_acc, global_steps, train_time, train_eval_time = train(train_loader, model, optimizer, global_steps, epoch, configs)
@@ -415,7 +429,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
 
         if recorder != None:
             recorder.save_epoch_info(
-                t=times, e=epoch, 
+                t=times, e=epoch, lr=lr,
                 tr_acc=train_acc, tr_loss=train_loss, tr_t=train_time,  tr_ev_t=train_eval_time,
                 te_acc=test_acc, te_t=test_time)
 
@@ -455,8 +469,8 @@ if __name__ == '__main__':
     from utils.nlp import get_data, get_word_vector
     from model.nlp_single import LSTM_BP_3, LSTM_BP_4, LSTM_BP_d, LSTM_SCPL_3, LSTM_SCPL_4, LSTM_SCPL_5
     from model.nlp_single import Trans_BP_3, Trans_BP_4, Trans_BP_d, Trans_SCPL_3, Trans_SCPL_4, Trans_SCPL_5
-    from model.nlp_multi import LSTM_SCPL_m_4, LSTM_SCPL_m_d, LSTM_BP_m_d, LSTM_BP_p_m_d, LSTM_DASCPL_m_d
-    from model.nlp_multi import Trans_SCPL_m_4, Trans_SCPL_m_d, Trans_BP_m_d, Trans_BP_p_m_d, Trans_DASCPL_m_d
+    from model.nlp_multi import LSTM_SCPL_m_4, LSTM_SCPL_m_d, LSTM_BP_m_d, LSTM_BP_p_m_d, LSTM_DASCPL_m_d, LSTM_EE_m_d
+    from model.nlp_multi import Trans_SCPL_m_4, Trans_SCPL_m_d, Trans_BP_m_d, Trans_BP_p_m_d, Trans_DASCPL_m_d, Trans_EE_m_d
 
     run_times = configs['times']
 
@@ -471,8 +485,8 @@ if __name__ == '__main__':
         from torch.utils.tensorboard import SummaryWriter
         recorder = ModelResultRecorder(model_name=configs['model'])
         if configs["profiler"] == True:
-            from model.nlp_multi_profiler import LSTM_BP_m_d, LSTM_BP_p_m_d, LSTM_SCPL_m_d, LSTM_DASCPL_m_d
-            from model.nlp_multi_profiler import Trans_BP_m_d, Trans_BP_p_m_d, Trans_SCPL_m_d, Trans_DASCPL_m_d
+            from model.nlp_multi_profiler import LSTM_BP_m_d, LSTM_BP_p_m_d, LSTM_SCPL_m_d, LSTM_DASCPL_m_d, LSTM_EE_m_d
+            from model.nlp_multi_profiler import Trans_BP_m_d, Trans_BP_p_m_d, Trans_SCPL_m_d, Trans_DASCPL_m_d, Trans_EE_m_d
             print("[INFO] Results and model profiler will be saved in \"{}*\" later".format(configs["save_path"]))
         else:
             print("[INFO] Results will be saved in \"{}*\" later".format(configs["save_path"]))

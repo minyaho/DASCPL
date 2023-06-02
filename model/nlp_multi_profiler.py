@@ -363,10 +363,11 @@ class LSTM_SCPL_m_d(NLP_MultiGPU):
     def __init__(self, configs):
         super(LSTM_SCPL_m_d, self).__init__(configs)
 
-    def _init_data(self, configs):
+    def _init_data(self, configs, check_flag=True):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        if check_flag:
+            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
         self.temperature = configs['temperature']
 
@@ -611,6 +612,18 @@ class LSTM_DASCPL_m_d(LSTM_SCPL_m_d):
             layer_fs.append(hat_Y)
         
         return layer_fs, true_Ys
+
+class LSTM_EE_m_d(LSTM_SCPL_m_d):
+    def __init__(self, configs):
+        super(LSTM_EE_m_d, self).__init__(configs)
+
+    def _init_data(self, configs):
+        # Data
+        super()._init_data(configs, check_flag=False)
+        self.proj_type = None
+        self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.pred_type  = self.pred_type  + ",non-detach"
 
 class Trans_BP_m_d(NLP_MultiGPU):
     def __init__(self, configs):
@@ -914,10 +927,11 @@ class Trans_SCPL_m_d(NLP_MultiGPU):
     def __init__(self, configs):
         super(Trans_SCPL_m_d, self).__init__(configs)
 
-    def _init_data(self, configs):
+    def _init_data(self, configs, check_flag=True):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        if check_flag:
+            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = None
         self.temperature = configs['temperature']
 
@@ -1167,3 +1181,15 @@ class Trans_DASCPL_m_d(Trans_SCPL_m_d):
             layer_fs.append(hat_Y)
 
         return layer_fs, true_Ys
+    
+class Trans_EE_m_d(Trans_SCPL_m_d):
+    def __init__(self, configs):
+        super(Trans_EE_m_d, self).__init__(configs)
+
+    def _init_data(self, configs):
+        # Data
+        super()._init_data(configs, check_flag=False)
+        self.proj_type = None
+        self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.pred_type  = self.pred_type  + ",non-detach"

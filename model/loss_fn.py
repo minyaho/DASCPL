@@ -28,7 +28,7 @@ class Vision_Predictor(nn.Module):
     def forward(self, x, y=None):
         output = self.layer(x)
         return output
-    
+
 class LocalLoss(nn.Module):
     def __init__(self, temperature=0.1, input_dim = 128, hid_dim = 512, out_dim = 1024, 
                  num_classes=None, proj_type=None, pred_type=None, device=None):
@@ -54,6 +54,11 @@ class LocalLoss(nn.Module):
         self.projector = None
         self.predictor = None
 
+        if self.proj_type != None:
+            self.proj_type, self.proj_dim = self._parser_type(self.proj_type, hid_dim, out_dim, mode="proj")
+        if self.pred_type != None:
+            self.pred_type, self.pred_dim = self._parser_type(self.pred_type, hid_dim, out_dim, mode="pred")
+
         # if "dcl" in proj_type:
         #     self.loss_type = 'dcl'
         #     print("[CL Loss] Use dcl loss")
@@ -61,6 +66,39 @@ class LocalLoss(nn.Module):
         #     self.loss_type = 'infoNCE'
         #     print("[CL Loss] Use infoNCE loss")
     
+    def _parser_type(self, _type, hid_dim=None, out_dim=None, mode="proj"):
+        if _type==None: return None, [None, None] 
+
+        _set = []
+        _dim = []
+        for item in _type:
+            if item.isdigit():
+                _dim.append(int(item))
+            else:
+                _set.append(item)
+
+        if mode == "proj":
+            if "i" in _set:
+                assert len(_dim) == 0, "[CL Loss Error] You can not set dimension of identity function in projection head."
+                _dim = [None, None] 
+            elif len(_dim) == 0:
+                _dim = [out_dim, hid_dim] 
+            elif "l" in _set:
+                assert len(_dim) == 1, "[CL Loss Error] You only can set one dimension (output dimension) of linear function in projection head."
+                _dim = [_dim[-1], hid_dim] 
+            elif len(_dim) == 1:
+                _dim = [out_dim, _dim[-1]]
+            else:
+                assert len(_dim) == 2, "[CL Loss Error] You only can set two dimension (hidden and output dimension) in projection head."
+                _dim = [_dim[-1], _dim[-2]]
+        elif mode == "pred":
+            assert "m" in _set, "[Predictor Loss Error] You can only set MLP (m) type in projection head."
+            assert len(_dim) in [0, 1], "[Predictor Loss Error] You only can set or not set one dimension (hidden dimension) in predictor."
+            if len(_dim) == 0:
+                _dim = [hid_dim]
+                
+        return _set, _dim
+
     def _contrastive_loss(self, x, label):
         x = self.projector(x)
         x =  nn.functional.normalize(x)
@@ -120,10 +158,10 @@ class VisionLocalLoss(LocalLoss):
 
         self.input_dim = int(c_in * shape * shape)
         if self.proj_type != None:
-            self.projector = nn.Sequential(Flatten(), make_projector(self.proj_type, self.input_dim, self.hid_dim, self.out_dim, self.device, temperature=self.temperature))
+            self.projector = nn.Sequential(Flatten(), make_projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature))
         if (self.pred_type != None) and ("none" not in self.pred_type):
-            self.predictor = Vision_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.hid_dim, device=self.device)
-            info_str = "[Predictor Loss] Use local predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.hid_dim, self.num_classes, self.device)
+            self.predictor = Vision_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1], device=self.device)
+            info_str = "[Predictor Loss] Use local MLP predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.pred_dim[-1], self.num_classes, self.device)
             deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
             print(info_str + deatch_str)
 
@@ -133,10 +171,10 @@ class NLPLocalLoss(LocalLoss):
 
         super(NLPLocalLoss, self).__init__(temperature, input_dim, hid_dim, out_dim , num_classes, proj_type, pred_type, device)
         if self.proj_type != None:
-            self.projector = make_projector(self.proj_type, self.input_dim, self.out_dim, self.hid_dim, self.device, temperature=self.temperature)
+            self.projector = make_projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature)
         if self.pred_type != None:
-            self.predictor = NLP_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.hid_dim ,device=self.device)
-            info_str = "[Predictor Loss] Use local predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.hid_dim, self.num_classes, self.device)
+            self.predictor = NLP_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1] ,device=self.device)
+            info_str = "[Predictor Loss] Use local MLP predictor, in_dim: {}, out_dim: {}, hid_dim: {}, Device: {}".format(self.input_dim, self.num_classes, self.pred_dim[-1], self.device)
             deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
             print(info_str + deatch_str)
 

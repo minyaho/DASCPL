@@ -299,10 +299,14 @@ class CPUThread(threading.Thread):
         self.join()
         return self.__result__
 
-def setup_seed(seed):
+def setup_seed(configs):
+    seed = int(configs['seed'])
+    speedUP_f = configs['speedup']
     # https://pytorch.org/docs/stable/notes/randomness.html
-    if int(seed) == -1:
-        # torch.backends.cudnn.benchmark = True # Restore benchmark to improve performance
+    if seed == -1:
+        if speedUP_f:
+            torch.backends.cudnn.benchmark = True # Restore benchmark to improve performance
+            print("[INFO] Use \"torch.backends.cudnn.benchmark\"")
         return "Random"
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -360,6 +364,7 @@ class ModelResultRecorder(object):
         self.max = "max"
         self.pos = "pos" # position
         self.raw_data = "raw_data"
+        self.lr = "lr"
 
     def add(self, times, best_test_acc, best_test_epoch, 
             epoch_train_time, epoch_train_eval_time,
@@ -377,13 +382,14 @@ class ModelResultRecorder(object):
             self.gpus_info: gpus_info
         }
 
-    def save_epoch_info(self, t, e, tr_acc, tr_loss, tr_t, te_acc, te_t, tr_ev_t=None):
+    def save_epoch_info(self, t, e, lr, tr_acc, tr_loss, tr_t, te_acc, te_t, tr_ev_t=None):
         if t not in self.model_train_history.keys():
             self.model_train_history[t] = dict()
 
         self.model_train_history[t][e] = {
             self.times: t,
             self.epoch: e,
+            self.lr: lr,
             self.train_acc: tr_acc,
             self.train_loss: tr_loss,
             self.train_time: tr_t,

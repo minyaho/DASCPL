@@ -278,11 +278,12 @@ class VGG_SCPL_m(Vision_MultiGPU):
     def __init__(self, configs):
         super(VGG_SCPL_m, self).__init__(configs)
 
-    def _init_data(self, configs):
+    def _init_data(self, configs, check_flag=True):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        if check_flag:
+            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.temperature = configs['temperature']
 
     def _init_model(self, configs):
@@ -470,6 +471,18 @@ class VGG_DASCPL_m(VGG_SCPL_m):
         layer_fs.append(hat_y4)
 
         return layer_fs, true_Ys
+
+class VGG_EE_m(VGG_SCPL_m):
+    def __init__(self, configs):
+        super(VGG_EE_m, self).__init__(configs)
+
+    def _init_data(self, configs):
+        # Data
+        super()._init_data(configs, check_flag=False)
+        self.proj_type = None
+        self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.pred_type  = self.pred_type  + ",non-detach"
 
 class resnet18_BP_m(Vision_MultiGPU):
     def __init__(self, configs):
@@ -705,11 +718,12 @@ class resnet18_SCPL_m(Vision_MultiGPU):
     def __init__(self, configs):
         super(resnet18_SCPL_m, self).__init__(configs)
 
-    def _init_data(self, configs):
+    def _init_data(self, configs, check_flag=True):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        if check_flag:
+            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.temperature = configs['temperature']
 
     def _init_model(self, configs):
@@ -902,3 +916,16 @@ class resnet18_DASCPL_m(resnet18_SCPL_m):
         layer_fs.append(hat_y5)
         
         return layer_fs, true_Ys
+    
+
+class resnet18_EE_m(resnet18_SCPL_m):
+    def __init__(self, configs):
+        super(resnet18_EE_m, self).__init__(configs)
+
+    def _init_data(self, configs):
+        # Data
+        super()._init_data(configs, check_flag=False)
+        self.proj_type = None
+        self.pred_type = configs['pred_type']
+        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        self.pred_type  = self.pred_type  + ",non-detach"

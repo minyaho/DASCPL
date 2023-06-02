@@ -92,6 +92,9 @@ def get_data(args):
         trainset, batch_size=args['train_bsz'], collate_fn=trainset.collate, shuffle=True, pin_memory=True)
     test_loader = DataLoader(
         testset, batch_size=args['test_bsz'], collate_fn=testset.collate, pin_memory=True)
+    
+    if float(args['noise_rate']) != 0:
+        add_noise(train_loader, class_num, float(args['noise_rate']))
 
     return train_loader, test_loader, class_num, vocab
 
@@ -204,6 +207,26 @@ def create_vocab(corpus, vocab_size=30000):
     print('vocab size', len(vocab_to_int))
 
     return vocab_to_int
+
+def add_noise(loader, class_num, noise_rate):
+    """ Referenced from https://github.com/PaulAlbert31/LabelNoiseCorrection """
+    print("[DATA INFO] Use noise rate {} in training dataset.".format(float(noise_rate)))
+    noisy_labels = [sample_i for sample_i in loader.sampler.data_source.y]
+    text = [sample_i for sample_i in loader.sampler.data_source.x]
+    probs_to_change = torch.randint(100, (len(noisy_labels),))
+    idx_to_change = probs_to_change >= (100.0 - noise_rate*100)
+    percentage_of_bad_labels = 100 * (torch.sum(idx_to_change).item() / float(len(noisy_labels)))
+
+    for n, label_i in enumerate(noisy_labels):
+        if idx_to_change[n] == 1:
+            set_labels = list(set(range(class_num)))
+            set_index = np.random.randint(len(set_labels))
+            noisy_labels[n] = set_labels[set_index]
+
+    # loader.sampler.data_source.x = text
+    loader.sampler.data_source.y = noisy_labels
+
+    return noisy_labels
 
 
 class Textset(Dataset):

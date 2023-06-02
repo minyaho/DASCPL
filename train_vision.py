@@ -29,8 +29,10 @@ def get_args():
         There are many types of logs, such as training logs, model results (JSON) and tensorboard files. \"None\" means do not save.', default=None)
     parser.add_argument('--profiler', type=str, help='Profiler of model. \
         If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
-    parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (mulitGPU types only)', default="true")
-    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss', default=0.1)
+    parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (Only use when \"train_eval\" is true) (mulitGPU types only)', default="true")
+    parser.add_argument('--train_eval_times', type=int, help='The number of epoch intervals to evaluate a training.', default=1)
+    parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
+    parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
 
     # Vision Options
     parser.add_argument('--aug_type', type=str, help='Type of Data augmentation. \
@@ -61,7 +63,9 @@ def read_config(args=None):
         configs["multi_t"] = True if args.multi_t.lower() in ['t', 'true'] else False
         configs["profiler"] = True if args.profiler.lower() in ['t', 'true'] else False
         configs["train_eval"] = True if args.train_eval.lower() in ['t', 'true'] else False
+        configs["train_eval_times"] = args.train_eval_times
         configs['temperature'] = args.temperature
+        configs['speedup'] = True if args.speedup.lower() in ['t', 'true'] else False
         
         layers = 4
         assert layers==4, "layers are only 4"
@@ -95,6 +99,9 @@ def set_model(name):
     ## DASCPL
     elif name == "VGG_DASCPL_m":
         model = VGG_DASCPL_m
+    ## DASCPL
+    elif name == "VGG_EE_m":
+        model = VGG_EE_m
 
     # ResNet - Single GPU 
     ## BP
@@ -116,6 +123,10 @@ def set_model(name):
     ## DASCPL
     elif name == "resnet_DASCPL_m":
         model = resnet18_DASCPL_m
+    ## EE
+    elif name == "resnet_EE_m":
+        model = resnet18_EE_m
+
 
     # Other - Single GPU 
     elif name == "VGG_AL":
@@ -347,7 +358,7 @@ def eval_multiGPU(test_loader, model, epoch):
 
 def main(times, conf, recorder: ModelResultRecorder==None):
     configs = deepcopy(conf)
-    configs['seed'] = setup_seed(configs['seed'])
+    configs['seed'] = setup_seed(configs)
     
     train_loader, test_loader, n_classes = set_loader(configs['dataset'], configs['train_bsz'], configs['test_bsz'], configs['aug_type'])
     configs['max_steps'] = configs['epochs'] * len(train_loader)
@@ -372,7 +383,11 @@ def main(times, conf, recorder: ModelResultRecorder==None):
     else:
         print("Device: {}, ".format(configs["gpus"][0]), end="")
     print("Train_B: {}, Test_B: {}, D.A.: {}, ".format(configs['train_bsz'], configs['test_bsz'], configs['aug_type']), end="")
-    print("Epoch: {}, Train eval: {}, Seed: {}".format(configs['epochs'], configs['train_eval'], configs['seed']))
+    if configs['train_eval'] == True:
+        print("Train eval: {} ({} epochs once), ".format(configs['train_eval'], configs['train_eval_times']), end="")
+    else:
+        print("Train eval: {}, ".format(configs['train_eval']), end="")
+    print("Epoch: {}, Seed: {}".format(configs['epochs'], configs['seed']))
 
     if recorder != None:
         writer = SummaryWriter(configs["save_path"]+'/tb_log_t({:03d})'.format(times))
@@ -385,8 +400,12 @@ def main(times, conf, recorder: ModelResultRecorder==None):
     global_steps = 0
     best_acc = 0
     best_epoch = 0
+    train_eval_flag = False
     
     for epoch in range(1, configs['epochs'] + 1):
+
+        if configs["train_eval"] == True:
+            train_eval_flag = ((epoch%configs["train_eval_times"])==0)
 
         if select_model.device_type == "multi":
             lr = model.opt_step(global_steps)
@@ -397,7 +416,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
 
         if select_model.device_type == "multi":
             train_loss, train_acc, global_steps, train_time, train_eval_time = train_multiGPU(
-                train_loader, model, global_steps, epoch, configs["multi_t"], configs["train_eval"])
+                train_loader, model, global_steps, epoch, configs["multi_t"], train_eval_flag)
             tb_record_gradient(model=model.model, writer=writer, epoch=epoch)
         else:
             train_loss, train_acc, global_steps, train_time, train_eval_time = train(train_loader, model, optimizer, global_steps, epoch, configs)
@@ -422,7 +441,7 @@ def main(times, conf, recorder: ModelResultRecorder==None):
 
         if recorder != None:
             recorder.save_epoch_info(
-                t=times, e=epoch, 
+                t=times, e=epoch, lr=lr,
                 tr_acc=train_acc, tr_loss=train_loss, tr_t=train_time,  tr_ev_t=train_eval_time,
                 te_acc=test_acc, te_t=test_time)
 
@@ -463,8 +482,8 @@ if __name__ == '__main__':
     from model.ResNet import resnet18, resnet18_AL, resnet18_SCPL, resnet18_PredSim
     from model.VGG import VGG, VGG_AL, VGG_SCPL, VGG_PredSim, VGG_SCPL_REWRITE
     from model.vanillaCNN import CNN, CNN_AL, CNN_SCPL, CNN_PredSim
-    from model.vision_multi import VGG_BP_m, VGG_BP_p_m, VGG_SCPL_m, VGG_DASCPL_m
-    from model.vision_multi import resnet18_BP_m, resnet18_BP_p_m, resnet18_SCPL_m, resnet18_DASCPL_m
+    from model.vision_multi import VGG_BP_m, VGG_BP_p_m, VGG_SCPL_m, VGG_DASCPL_m, VGG_EE_m
+    from model.vision_multi import resnet18_BP_m, resnet18_BP_p_m, resnet18_SCPL_m, resnet18_DASCPL_m, resnet18_EE_m
 
     run_times = configs['times']
 

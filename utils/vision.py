@@ -138,6 +138,8 @@ def add_noise_cifar(loader, noise_rate):
     loader.sampler.data_source.data = images
     loader.sampler.data_source.targets = noisy_labels
 
+    return noisy_labels
+
 class TwoCropTransform:
     """Create two crops of the same image"""
     def __init__(self, transform1, transform2=None):
