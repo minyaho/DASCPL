@@ -3,22 +3,22 @@
 | Name | Version | Note |
 | --- | --- | --- |
 | Python | `3.8.12` | Please install it from [Anaconda](https://www.anaconda.com/products/distribution). |
-| CUDA | `11.4.1` | You can download from [here](https://developer.nvidia.com/cuda-11-4-1-download-archive). |
-| PyTorch | `1.12.1+cu113` | Include `0.13.1+cu113` version of torchvision. </br> You can download from [here](https://pytorch.org/get-started/previous-versions/#v1121). |
+| CUDA | `11.4.1` | You can download it from [here](https://developer.nvidia.com/cuda-11-4-1-download-archive). |
+| PyTorch | `1.12.1+cu113` | Include `0.13.1+cu113` version of torchvision. </br> You can download it from [here](https://pytorch.org/get-started/previous-versions/#v1121). |
 ||| Others in the `requirements.txt` file. </br> Please use pip to install them. |
 
 ## Setup
-### Make a Environment
+### Make an Environment
 
-Tested under Python 3.8.12 in Ubuntu 20.04.
-Install the required packages by
+Tested under Python 3.8.12 on Ubuntu 20.04.
+Install the required packages by running the following command:
 
 ```bash
 $ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 $ pip install -r requirements.txt
 ```
 
-In addition, you can simulate the experiment by Docker,
+Additionally, you can simulate the experiment using Docker with the following steps:
 
 ```bash
 $ docker pull nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
@@ -38,9 +38,9 @@ $ conda activate dascpl # used before every time experiment
 ### Download Datasets
 
 #### Vision
-* Tiny-imagenet-200:  Download [here](https://drive.google.com/file/d/10wl7UjC47xuUZG5zdUwSwHP1tlV-Ubf7/view?usp=share_link). This zip file of tinyImageNet dataset processed under PyTorch ImageFolder format. 
-  > Unzip the zip file, please use this command (`unzip tiny-imagenet-200.zip`).
-  > Put the unzipped folder (`./tiny-imagenet-200`) in the root of your project.
+* Tiny-imagenet-200:  Download [here](https://drive.google.com/file/d/10wl7UjC47xuUZG5zdUwSwHP1tlV-Ubf7/view?usp=share_link). This zip file contains the tinyImageNet dataset processed in the PyTorch ImageFolder format.
+  > Unzip the file using the command  `unzip tiny-imagenet-200.zip`.
+  > Place the unzipped folder (`./tiny-imagenet-200`) in the root of your project.
 
 #### NLP
 * IMDB: Please download the dataset from [here](https://drive.google.com/file/d/1Z2iqiPKF5wYCgXR-Tc9ZnQqUFVkJvypA/view?usp=share_link).
@@ -68,24 +68,24 @@ $ python train_vision.py [Options]
 | -------- | -------- | -------- |
 |`--model`|`VGG_BP_m`|Model name|
 |`--dataset`|`cifar10`| Dataset name </br> Options: `cifar10`, `cifar100` or `tinyImageNet`|
-|`--times`|`1`| Times of experiment|
-|`--epochs`|`200`| Number of epochs for training|
+|`--times`|`1`| Number of experiments to run|
+|`--epochs`|`200`| Number of training epochs|
 |`--train_bsz`|`1024`| Batch size of training data|
 |`--test_bsz`|`1024`| Batch size of test data|
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.00001`| Learning rate at the end of training|
 |`--temperature`|`0.1`|Temperature parameter of contrastive loss|
-|`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
-|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
-|`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
-|`--proj_type`|`None`| Projective head type in contrastive loss. `i` is identity. `l` is linear. `m` is mlp.|
-|`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
-|`--save_path`|`None`| Save path of the model log. There are many types of logs, such as training logs, model results (JSON) and tensorboard files. "None" means do not save.|
-|`--profiler`|`false`| Profiler of model. If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save.|
-|`--train_eval`|`ture`| On-off flag for evaluation behavior during training. (mulitGPU types only) |
-|`--train_eval_times`|`1`| The number of epoch intervals to evaluate a training. |
+|`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate their IDs with commas, e.g., `0,1`. For single GPU models, only the first GPU ID will be used.|
+|`--seed`|`-1`| Random seed used in the experiment. Use `-1` to generate a random seed for each run.|
+|`--multi_t`|`true`| Multi-threading flag. Set it to "true" to enable multi-threading, or "false" to disable it.|
+|`--proj_type`|`None`| Projective head type in contrastive loss. Use `i` for identity, `l` for linear, and `m` is mlp.|
+|`--pred_type`|`None`| Predictor type in predict loss. Use `i` for identity, `l` for linear, and `m` is mlp.|
+|`--save_path`|`None`| Save path of the model log. Different types of logs, such as training logs, model results (JSON), and tensorboard files, can be saved. Use "None" to disable saving.|
+|`--profiler`|`false`| Model profiler. Set it to "true" to enable the profiler and specify the "save_path". Set it to "false" to disable the profiler.|
+|`--train_eval`|`ture`|Flag to enable evaluation during training (only for multi-GPU models). |
+|`--train_eval_times`|`1`| The number of epochs between evaluations during training.|
 |`--temperature`|`0.1`| Temperature parameter of contrastive loss. |
-|`--aug_type`|`strong`| Type of Data augmentation. Use **basic** augmentation like BP commonly used, or **strong** augmentation like contrastive learning used. </br> Options: `basic`, `strong` |
+|`--aug_type`|`strong`| Type of Data augmentation. Use **basic** augmentation like BP (backpropagation) commonly used, or **strong** augmentation like contrastive learning used. </br> Options: `basic`, `strong` |
 
 #### Model
 * `VGG8`
@@ -96,7 +96,7 @@ $ python train_vision.py [Options]
   * MultiGPU: `resnet_BP_m`, `resnet_BP_p_m`, `resnet18_SCPL_m`, `resnet_DASCPL_m`
 * Suffix meaning
   * `m`: MultiGPU model. Similarly, it can also be experimented with a single GPU.
-  * `p`: Can set a predictor in this model.  You need to set the `pred_type`. All DSCPL type models have this option by default (not shown in the suffix).
+  * `p`: Specify the predictor in a model.  You need to set the `pred_type`. All DSCPL type models have this option by default (not shown in the suffix).
 
 #### Dataset
 `cifar10`, `cifar100` or `tinyImageNet`
@@ -129,28 +129,28 @@ $ python train_nlp.py [Options]
 | -------- | -------- | -------- |
 |`--model`|`LSTM_BP_m_d`|Model name|
 |`--dataset`|`ag_news`| Dataset name </br> Options: `ag_news`, `dbpedia_14`, `sst2`, `imdb`|
-|`--times`|`1`| Times of experiment|
-|`--epochs`|`50`| Number of epochs for training|
+|`--times`|`1`| Number of experiments to run|
+|`--epochs`|`50`| Number of training epochs|
 |`--train_bsz`|`1024`| Batch size of training data|
 |`--test_bsz`|`1024`| Batch size of test data|
 |`--base_lr`|`0.001`| Initial learning rate|
 |`--end_lr`|`0.001`| Learning rate at the end of training|
 |`--temperature`|`0.1`|Temperature parameter of contrastive loss|
-|`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. The model type is Single GPU will only use first gpu id.|
-|`--seed`|`-1`| Random seed in the experiment. If you don't want to fix the random seed, you need to type `-1`|
-|`--multi_t`|`true`| Multi-threaded on-off flag. On is "true". Off is "false"|
-|`--proj_type`|`None`| Projective head type in contrastive loss. `i` is identity. `l` is linear. `m` is mlp.|
-|`--pred_type`|`None`| Predictor type in predict loss. `i` is identity. `l` is linear. `m` is mlp.|
-|`--save_path`|`None`| Save path of the model log. There are many types of logs, such as training logs, model results (JSON) and tensorboard files. "None" means do not save.|
-|`--profiler`|`false`| Profiler of model. If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save.|
-|`--train_eval`|`ture`| On-off flag for evaluation behavior during training. (mulitGPU types only) |
-|`--train_eval_times`|`1`| The number of epoch intervals to evaluate a training. |
+|`--gpus`|`0`| ID of the GPU device. If you want to use multiple GPUs, you can separate them with commas, e.g., `0,1`. For single GPU models, only the first GPU ID will be used.|
+|`--seed`|`-1`| Random seed in the experiment. Use `-1` to generate a random seed for each run.|
+|`--multi_t`|`true`| Multi-threading flag. Set it to "true" to enable multi-threading, or "false" to disable it.|
+|`--proj_type`|`None`| Projective head type in contrastive loss. Use `i` for identity, `l` for linear, and `m` for mlp.|
+|`--pred_type`|`None`| Predictor type in predict loss. Use `i` for identity, `l` for linear, and `m` for mlp.|
+|`--save_path`|`None`| Save path of the model log. Different types of logs, such as training logs, model results (JSON), and tensorboard files, can be saved. Use "None" to disable saving.|
+|`--profiler`|`false`| Model profiler. Set it to "true" to enable the profiler and specify the "save_path". Set it to "false" to disable the profiler. |
+|`--train_eval`|`ture`| Flag to enable evaluation during training (only for multi-GPU models). |
+|`--train_eval_times`|`1`| The number of epochs between evaluations during training.|
 |`--temperature`|`0.1`| Temperature parameter of contrastive loss. |
 |`--max_len`|`60`| Maximum length for the sequence of input samples |
 |`--h_dim`|`300`|Dimensions of the hidden layer|
-|`--layers`|`4`|Number of layers of the model. The minimum is `2`. Because the first layer is the pre-training embedding layer, and the latter layer is lstm or transformer.|
-|`--heads`|`6`|Number of heads of transformer encoder. This option is only available on transformer.|
-|`--vocab_size`|`30000`|Size of dictionary vocabulary|
+|`--layers`|`4`|Number of layers of the model. The minimum is `2`. The first layer is the pre-training embedding layer, and the latter layer is lstm or transformer.|
+|`--heads`|`6`|Number of heads in the transformer encoder. This option is only available for the Transformer model.|
+|`--vocab_size`|`30000`|Size of vocabulary dictionary.|
 |`--word_vec`|`glove`| Type of word embedding |
 |`--emb_dim`|`300`| Dimension of word embedding |
 |`--noise_rate`|`0.0`| Noise rate of labels in training dataset (default is 0 for no noise). |
@@ -164,10 +164,10 @@ $ python train_nlp.py [Options]
   * MultiGPU: `Trans_BP_m_d`, `Trans_BP_p_m_d`, `Trans_SCPL_m_d`, `Trans_DASCPL_m_d`
 * Suffix meaning
   * `<number>`: The number of layers.
-    e.g., The `LSTM_SCPL_3` model has three layers in this model.
+    e.g., the model `LSTM_SCPL_3` has three layers.
   * `m`: MultiGPU model. Similarly, it can also be experimented with a single GPU.
   * `d`: Customize the number of layers.
-  * `p`: Can set a predictor in this model.  You need to set the `pred_type`. All DSCPL type models have this option by default (not shown in the suffix).
+  * `p`: Specify the predictor in a model.  You need to set the `pred_type`. All DSCPL type models have this option by default (not shown in the suffix).
 #### Dataset
 
 
