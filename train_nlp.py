@@ -11,27 +11,29 @@ def get_args():
     # General Options
     parser.add_argument('--model', type=str, help='Model name', default="LSTM_BP_m_d")
     parser.add_argument('--dataset', type=str, help='Dataset name', default="ag_news")
-    parser.add_argument('--times', type=int, help='Times of experiment', default="1")
-    parser.add_argument('--epochs', type=int, help='Number of epochs for training', default=50)
+    parser.add_argument('--times', type=int, help='Number of experiments to run', default="1")
+    parser.add_argument('--epochs', type=int, help='Number of training epochs', default=50)
     parser.add_argument('--train_bsz', type=int, help='Batch size of training data', default=1024)
     parser.add_argument('--test_bsz', type=int, help='Batch size of test data', default=1024)
     parser.add_argument('--base_lr', type=float, help='Initial learning rate', default=0.001)
     parser.add_argument('--end_lr', type=float, help='Learning rate at the end of training', default=0.001)
-    parser.add_argument('--gpus', type=str, help='ID of the GPU device. If you want to use multiple GPUs, \
-         you can separate them with commas, e.g., \"0,1\". The model type is Single GPU will only use first id.', default="0")
-    parser.add_argument('--seed', type=int, help='Random seed in the experiment. \
-        If you don\'t want to fix the random seed, you need to type "-1"', default="-1")
-    parser.add_argument('--multi_t', type=str, help='Multi-threaded on-off flag. On is \"true\". Off is \"false\"', default="true")
+    parser.add_argument('--gpus', type=str, help=' ID of the GPU device. If you want to use multiple GPUs, you can separate their IDs with commas, \
+         e.g., \"0,1\". For single GPU models, only the first GPU ID will be used.', default="0")
+    parser.add_argument('--seed', type=int, help='Random seed used in the experiment. \
+                        Use \"-1\" to generate a random seed for each run.', default="-1")
+    parser.add_argument('--multi_t', type=str, help='Multi-threading flag. Set it to \"true\" to enable multi-threading, or \"false\" to disable it.', default="true")
     parser.add_argument('--proj_type', type=str, help='Projective head type in contrastive loss. \
-        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+        Use \"i\" for identity, \"l\" for linear, and \"m\" is mlp (only for multi-GPU models).', default=None)
     parser.add_argument('--pred_type', type=str, help='Predictor type in predict loss. \
-        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+        Use \"i\" for identity, \"l\" for linear, and \"m\" is mlp (only for multi-GPU models).', default=None)
     parser.add_argument('--save_path', type=str, help='Save path of the model log. \
-        There are many types of logs, such as training logs, model results (JSON) and tensorboard files. \"None\" means do not save.', default=None)
-    parser.add_argument('--profiler', type=str, help='Profiler of model. \
-        If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
-    parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (mulitGPU types only)', default="true")
-    parser.add_argument('--train_eval_times', type=int, help='The number of epoch intervals to evaluate a training.', default=1)
+                        Different types of logs, such as training logs, model results (JSON), and tensorboard files, can be saved. \
+                        Use \"None\" to disable saving.', default=None)
+    parser.add_argument('--profiler', type=str, help='Model profiler. \
+                        Set it to \"true\" to enable the profiler and specify the \"save_path\". \
+                        Set it to \"false\" to disable the profiler.', default="false")
+    parser.add_argument('--train_eval', type=str, help='Flag to enable evaluation during training (only for multi-GPU models).', default="true")
+    parser.add_argument('--train_eval_times', type=int, help='The number of epochs between evaluations during training.', default=1)
     parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
     parser.add_argument('--noise_rate', type=float, help='Noise rate of labels in training dataset (default is 0 for no noise).', default=0.0)
     parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
@@ -39,11 +41,11 @@ def get_args():
     # NLP Options
     parser.add_argument('--max_len', type=int, help='Maximum length for the sequence of input samples', default="60")
     parser.add_argument('--h_dim', type=int, help='Dimensions of the hidden layer', default="300")
-    parser.add_argument('--layers', type=int, help='Number of layers of the model. The minimum is 2. \
-        Because the first layer is the pre-training embedding layer, and the latter layer is lstm or transformer.', default="4")
-    parser.add_argument('--heads', type=int, help='Number of heads of transformer encoder. \
-        This option is only available on transformer.', default="6")
-    parser.add_argument('--vocab_size', type=int, help='Size of dictionary vocabulary', default="30000")
+    parser.add_argument('--layers', type=int, help='Number of layers of the model. The minimum is \"2\". \
+                        The first layer is the pre-training embedding layer, and the latter layer is lstm or transformer.', default="4")
+    parser.add_argument('--heads', type=int, help='Number of heads in the transformer encoder. \
+                        This option is only available for the transformer model.', default="6")
+    parser.add_argument('--vocab_size', type=int, help='Size of vocabulary dictionary.', default="30000")
     parser.add_argument('--word_vec', type=str, help='Type of word embedding', default="glove")
     parser.add_argument('--emb_dim', type=int, help='Dimension of word embedding', default="300")
 

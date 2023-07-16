@@ -463,6 +463,8 @@ class ModelResultRecorder(object):
             self.times_test_acc + ' ' + self.std: np.std(_test_acc, axis=0).tolist(),
             self.times_train_acc + ' ' + self.max: _train_acc.max(1).tolist(),
             self.times_train_acc + ' ' + self.pos: _train_acc.argmax(1).tolist(),
+            self.times_train_acc + ' ' + self.max + ' ' + self.mean: _train_acc.max(1).mean(0).tolist(),
+            self.times_train_acc + ' ' + self.max + ' ' + self.std: _train_acc.max(1).std(0).tolist(),
             self.times_test_acc + ' ' + self.max: _test_acc.max(1).tolist(),
             self.times_test_acc + ' ' + self.pos: _test_acc.argmax(1).tolist(),
             self.times_test_acc + ' ' + self.max + ' ' + self.mean: _test_acc.max(1).mean(0).tolist(),
@@ -607,3 +609,41 @@ def model_save(times, configs, model, save_path, optimizer=None):
     }
     save_files = os.path.join(save_path, "ckpt_last_{0}.pth".format(times))
     torch.save(state, save_files)
+
+def getModelSizeNLP(model, configs):
+    try:
+        from torchinfo import summary
+    except Exception as E:
+        print("You need to install python package - \"pip install torchinfo==1.8.0\"")
+        os._exit(0)
+    
+    for step, (X, Y) in enumerate(model.train_loader): 
+        model.train()
+        summary(model, depth=10, input_data=[X,Y, True], batch_dim=configs['train_bsz'], verbose=2)
+
+        model.eval()
+        summary(model, depth=10, input_data=[X,Y, True], batch_dim=configs['train_bsz'], verbose=2)
+        break
+
+def getModelSizeVision(model, configs):
+    try:
+        from torchinfo import summary
+    except Exception as E:
+        print("You need to install python package - \"pip install torchinfo==1.8.0\"")
+        os._exit(0)
+    
+    for step, (X, Y) in enumerate(model.train_loader): 
+        if model.aug_type == "strong":
+            if model.dataset == "cifar10" or model.dataset == "cifar100":
+                X = torch.cat(X)
+                Y = torch.cat(Y)
+            else:
+                X = torch.cat(X)
+                Y = torch.cat([Y, Y])
+
+        model.train()
+        summary(model, depth=10, input_data=[X,Y, True], batch_dim=configs['train_bsz'], verbose=2)
+
+        model.eval()
+        summary(model, depth=10, input_data=[X,Y, True], batch_dim=configs['train_bsz'], verbose=2)
+        break

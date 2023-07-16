@@ -3,7 +3,7 @@ import torch.nn as nn
 from utils import Optimizer, CPUThread, MultiGPUModel
 from itertools import chain
 from collections import OrderedDict
-from .vision_single import VGG_Block, VGG_Predictor, resnet18_Head, resnet18_Block, resnet18_Predictor
+from .vision_single import VGG_Block, VGG_Predictor, resnet18_Head, resnet18_Block, resnet18_Predictor, resnet_Predictor
 # from transformer.encoder import TransformerEncoder
 
 class Vision_MultiGPU(MultiGPUModel):
@@ -282,8 +282,8 @@ class VGG_SCPL_m(Vision_MultiGPU):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        if check_flag:
-            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        # if check_flag:
+        #     assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.temperature = configs['temperature']
 
     def _init_model(self, configs):
@@ -437,9 +437,9 @@ class VGG_DASCPL_m(VGG_SCPL_m):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        # assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
-        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        # assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
         self.temperature = configs['temperature']
 
     def inference(self, X, Y):
@@ -496,7 +496,7 @@ class resnet18_BP_m(Vision_MultiGPU):
     def _init_model(self, configs):
         self.shape = 32
         self.in_channels = 3
-        self.layer_cfg = {0:[64, 64, [1, 1]], 1:[64, 128, [2, 1]], 2:[128, 256, [2, 1]], 3:[256, 512, [2, 1]]}
+        self.layer_cfg = {0:[64, 64, [1, 1]], 1:[64, 128, [2, 1]], 2:[128, 256, [2, 1]], 3:[256, 512, [2, 1]], 4:[512]}
 
         self.model_cfg = {
             'head': {"device": self.devices[0]},
@@ -514,7 +514,7 @@ class resnet18_BP_m(Vision_MultiGPU):
                 "in_channels":self.layer_cfg[3][1], "pred_type":self.pred_type,
                 "avg_pool":torch.nn.AdaptiveAvgPool2d((1, 1)), "device":self.devices[3]},
             'predictor': {
-                "num_classes":self.num_classes, "device":self.devices[3]}
+                "in_dim":self.layer_cfg[4][0], "num_classes":self.num_classes, "device":self.devices[3]}
         }
 
         # Make Model
@@ -722,14 +722,14 @@ class resnet18_SCPL_m(Vision_MultiGPU):
         # Data
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        if check_flag:
-            assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        # if check_flag:
+        #     assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.temperature = configs['temperature']
 
     def _init_model(self, configs):
         self.shape = 32
         self.in_channels = 3
-        self.layer_cfg = {0:[64, 64, [1, 1]], 1:[64, 128, [2, 1]], 2:[128, 256, [2, 1]], 3:[256, 512, [2, 1]]}
+        self.layer_cfg = {0:[64, 64, [1, 1]], 1:[64, 128, [2, 1]], 2:[128, 256, [2, 1]], 3:[256, 512, [2, 1]], 4:[512]}
 
         self.model_cfg = {
             'head': {"device": self.devices[0]},
@@ -747,7 +747,7 @@ class resnet18_SCPL_m(Vision_MultiGPU):
                 "in_channels":self.layer_cfg[3][1], "proj_type":self.proj_type, "pred_type":self.pred_type,
                 "avg_pool":torch.nn.AdaptiveAvgPool2d((1, 1)), "device":self.devices[3]},
             'predictor': {
-                "num_classes":self.num_classes, "device":self.devices[3]}
+                "in_dim":self.layer_cfg[4][0], "num_classes":self.num_classes, "device":self.devices[3]}
         }
 
         # Make Model
@@ -882,9 +882,9 @@ class resnet18_DASCPL_m(resnet18_SCPL_m):
     def _init_data(self, configs):
         super()._init_data(configs)
         self.proj_type = configs['proj_type']
-        assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
+        # assert self.proj_type not in [None, ''], "Setting error, proj_type is none or empty. proj_type: {}".format(self.proj_type)
         self.pred_type = configs['pred_type']
-        assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
+        # assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
         self.temperature = configs['temperature']
 
     def inference(self, X, Y):
@@ -929,3 +929,4 @@ class resnet18_EE_m(resnet18_SCPL_m):
         self.pred_type = configs['pred_type']
         assert self.pred_type not in [None, ''], "Setting error, pred_type is none or empty. pred_type: {}".format(self.pred_type)
         self.pred_type  = self.pred_type  + ",non-detach"
+

@@ -76,10 +76,10 @@ class resnet18_Head(nn.Module):
         return output
 
 class resnet18_Predictor(nn.Module):
-    def __init__(self, num_classes=100, device='cpu'):
+    def __init__(self, in_dim=512, num_classes=100, device='cpu'):
         super(resnet18_Predictor,self).__init__()
         self.device = device
-        self.layer = nn.Linear(512, num_classes)
+        self.layer = nn.Linear(in_dim, num_classes)
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x, y=None):
@@ -97,6 +97,10 @@ class resnet18_Block(nn.Module):
         self.out_channels = cfg[-2]
         self.temperature = temperature
         self.avg_pool = avg_pool #nn.AdaptiveAvgPool2d((1, 1))
+
+        if self.avg_pool != None:
+            proj_type = proj_type.replace(',avg', '')  if proj_type != None else None
+            pred_type = pred_type.replace(',avg', '') if pred_type != None else None
 
         self._make_loss_layer(num_classes, proj_type, pred_type)
 
@@ -137,9 +141,12 @@ class resnet18_SCPL_Block(resnet18_Block):
             loss += self.loss(output, y)
             output = output.detach()
         return output, loss
-
+   
 """Modified from https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
 class BasicBlock(nn.Module):
+    """
+    Basic Block for resnet 18 and resnet 34
+    """
     expansion = 1
 
     def __init__(self, in_channels, out_channels, stride=1):
@@ -160,3 +167,76 @@ class BasicBlock(nn.Module):
         out = self.conv2(out)
         out = self.relu(out + self.shortcut(x))
         return out
+
+class resnet_Head(nn.Module):
+    """
+    ResNet Input Stem
+    """
+    def __init__(self, device='cpu'):
+        super(resnet_Head,self).__init__()
+        self.device = device
+        self.layer = conv_layer_bn(3, 64, nn.LeakyReLU(inplace=True), 1, False)
+    def forward(self, x, y=None):
+        output = self.layer(x)
+        return output
+
+class resnet_Predictor(nn.Module):
+    """
+    ResNet Output Stem with AvgPool
+    """
+    def __init__(self, in_dim, num_classes, avg_pool=None, device='cpu'):
+        super(resnet_Predictor,self).__init__()
+        self.device = device
+        self.layer = nn.Linear(in_dim, num_classes)
+        self.loss = nn.CrossEntropyLoss()
+        self.avg_pool = avg_pool #nn.AdaptiveAvgPool2d((1, 1))
+
+    def forward(self, x):
+        if self.avg_pool != None:
+            x = self.avg_pool(x)
+        x = x.view(x.size(0), -1)
+        output = self.layer(x)
+        return output
+
+
+class resnet_Block(nn.Module):
+    """
+    ResNet Block
+    """
+    def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type=None, pred_type=None, num_classes=None, device='cpu'):
+        super(resnet_Block,self).__init__()
+        self.shape = shape
+        self.in_channels = in_channels
+        self.out_channels = None
+        self.layer = self._make_layer(*cfg)
+        self.device = device
+        self.avg_pool = avg_pool #nn.AdaptiveAvgPool2d((1, 1))
+
+        self._make_loss_layer(num_classes, proj_type, pred_type)
+
+    def _make_loss_layer(self, num_classes, proj_type=None, pred_type=None):
+        if (proj_type != None) or (pred_type != None):
+            self.proj_type = proj_type
+            self.pred_type = pred_type
+            self.loss = VisionLocalLoss(
+                temperature=0.1, c_in = self.out_channels, shape = self.shape, 
+                num_classes=num_classes, proj_type=proj_type, pred_type=pred_type, device=self.device)
+
+    def _make_layer(self, block, in_channels, out_channels, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)
+        layers = []
+        cur_channels = in_channels
+        for i in range(num_blocks):
+            stride = strides[i]
+            layers.append(block(cur_channels, out_channels, stride))
+            cur_channels = out_channels * block.expansion
+
+        self.out_channels = cur_channels
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x, y=None):
+        output = self.layer(x)
+        if self.avg_pool != None:
+            output = self.avg_pool(output)
+        return output

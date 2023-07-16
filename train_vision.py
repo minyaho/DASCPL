@@ -10,33 +10,39 @@ def get_args():
     parser = argparse.ArgumentParser('Vision SCPL training')
     parser.add_argument('--model', type=str, help='Model name', default="VGG_BP_m")
     parser.add_argument('--dataset', type=str, help='Dataset name', default="cifar10")
-    parser.add_argument('--times', type=int, help='Times of experiment', default="1")
-    parser.add_argument('--epochs', type=int, help='Number of epochs for training', default=200)
+    parser.add_argument('--times', type=int, help='Number of experiments to run', default="1")
+    parser.add_argument('--epochs', type=int, help='Number of training epochs', default=200)
     parser.add_argument('--train_bsz', type=int, help='Batch size of training data', default=1024)
     parser.add_argument('--test_bsz', type=int, help='Batch size of test data', default=1024)
     parser.add_argument('--base_lr', type=float, help='Initial learning rate', default=0.001)
     parser.add_argument('--end_lr', type=float, help='Learning rate at the end of training', default=0.00001)
-    parser.add_argument('--gpus', type=str, help='ID of the GPU device. If you want to use multiple GPUs, \
-         you can separate them with commas, e.g., \"0,1\". The model type is Single GPU will only use first id.', default="0")
-    parser.add_argument('--seed', type=int, help='Random seed in the experiment. \
-        If you don\'t want to fix the random seed, you need to type "-1"', default="-1")
-    parser.add_argument('--multi_t', type=str, help='Multi-threaded on-off flag. On is \"true\". Off is \"false\"', default="true")
+    parser.add_argument('--gpus', type=str, help=' ID of the GPU device. If you want to use multiple GPUs, you can separate their IDs with commas, \
+         e.g., \"0,1\". For single GPU models, only the first GPU ID will be used.', default="0")
+    parser.add_argument('--seed', type=int, help='Random seed used in the experiment. \
+                        Use \"-1\" to generate a random seed for each run.', default="-1")
+    parser.add_argument('--multi_t', type=str, help='Multi-threading flag. Set it to \"true\" to enable multi-threading, or \"false\" to disable it.', default="true")
     parser.add_argument('--proj_type', type=str, help='Projective head type in contrastive loss. \
-        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+        Use \"i\" for identity, \"l\" for linear, and \"m\" is mlp (only for multi-GPU models).', default=None)
     parser.add_argument('--pred_type', type=str, help='Predictor type in predict loss. \
-        \"i\" is identity. \"l\" is linear. \"m\" is mlp. (mulitGPU types only)', default=None)
+        Use \"i\" for identity, \"l\" for linear, and \"m\" is mlp (only for multi-GPU models).', default=None)
     parser.add_argument('--save_path', type=str, help='Save path of the model log. \
-        There are many types of logs, such as training logs, model results (JSON) and tensorboard files. \"None\" means do not save.', default=None)
-    parser.add_argument('--profiler', type=str, help='Profiler of model. \
-        If you want to use the profiler, please type "true" and set the "save_path". "false" means do not use and save. (mulitGPU types only)', default="false")
-    parser.add_argument('--train_eval', type=str, help='On-off flag for evaluation behavior during training. (Only use when \"train_eval\" is true) (mulitGPU types only)', default="true")
-    parser.add_argument('--train_eval_times', type=int, help='The number of epoch intervals to evaluate a training.', default=1)
+                        Different types of logs, such as training logs, model results (JSON), and tensorboard files, can be saved. \
+                        Use \"None\" to disable saving.', default=None)
+    parser.add_argument('--profiler', type=str, help='Model profiler. \
+                        Set it to \"true\" to enable the profiler and specify the \"save_path\". \
+                        Set it to \"false\" to disable the profiler.', default="false")
+    parser.add_argument('--train_eval', type=str, help='Flag to enable evaluation during training (only for multi-GPU models).', default="true")
+    parser.add_argument('--train_eval_times', type=int, help='The number of epochs between evaluations during training.', default=1)
     parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
     parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
 
     # Vision Options
     parser.add_argument('--aug_type', type=str, help='Type of Data augmentation. \
-        Use \"basic\" augmentation like BP commonly used, or \"strong\" augmentation like contrastive learning used. Options: \"basic\", \"strong\"', default="strong")
+                        Use \"basic\" augmentation like BP (backpropagation) commonly used, \
+                        or \"strong\" augmentation like contrastive learning used.', default="strong")
+
+    # Other
+    parser.add_argument('--trigger_epochs', type=str, help='This augment is only use in dynamic model of DASCPL.', default="50,100,150")
 
     args = parser.parse_args()
 
@@ -66,6 +72,7 @@ def read_config(args=None):
         configs["train_eval_times"] = args.train_eval_times
         configs['temperature'] = args.temperature
         configs['speedup'] = True if args.speedup.lower() in ['t', 'true'] else False
+        configs['trigger_epochs'] = None if args.trigger_epochs == "" else args.trigger_epochs
         
         layers = 4
         assert layers==4, "layers are only 4"
@@ -99,9 +106,20 @@ def set_model(name):
     ## DASCPL
     elif name == "VGG_DASCPL_m":
         model = VGG_DASCPL_m
-    ## DASCPL
+    ## EE
     elif name == "VGG_EE_m":
         model = VGG_EE_m
+    ## DASCPL dynamic
+    elif name in ["VGG_DASCPL_da_m", "VGG_DASCPL_dr_m"]:
+        try:
+            ## Dynamic testing of DASCPL  (They don't have profiler ver.)
+            from model.vision_multi_dynamic import  VGG_DASCPL_da_m, VGG_DASCPL_dr_m
+            if "_da_".lower() in name.lower():
+                model = VGG_DASCPL_da_m
+            elif "_dr_".lower() in name.lower():
+                model = VGG_DASCPL_dr_m
+        except Exception as e:
+            raise RuntimeError("[Model Error] This model ({}) need to be imported from related package. But this package can not be found. The original bug message - \"{}\".".format(name, e))
 
     # ResNet - Single GPU 
     ## BP
@@ -115,6 +133,7 @@ def set_model(name):
     ## BP
     elif name == "resnet_BP_m":
         model = resnet18_BP_m
+    ## BP_m
     elif name == "resnet_BP_p_m":
         model = resnet18_BP_p_m
     ## SCPL
@@ -126,7 +145,38 @@ def set_model(name):
     ## EE
     elif name == "resnet_EE_m":
         model = resnet18_EE_m
+    ## Other ResNet
+    elif name in ["resnet18_BP_m", "resnet34_BP_m", "resnet50_BP_m", "resnet101_BP_m", "resnet153_BP_m",
+                  "resnet18_BP_p_m", "resnet34_BP_p_m", "resnet50_BP_p_m", "resnet101_BP_p_m", "resnet153_BP_p_m",
+                  "resnet18_SCPL_m", "resnet34_SCPL_m", "resnet50_SCPL_m", "resnet101_SCPL_m", "resnet153_SCPL_m",
+                  "resnet18_DASCPL_m", "resnet34_DASCPL_m", "resnet50_DASCPL_m", "resnet101_DASCPL_m", "resnet153_DASCPL_m"]:
+        try:
+            ## More resnet type model (They don't have profiler ver.)
+            from model.vision_multi_resnet import resnet_BP_m, resnet_BP_p_m, resnet_SCPL_m, resnet_DASCPL_m
 
+            if "_bp_m".lower() in name.lower():
+                model = resnet_BP_m
+            elif "_bp_p_m".lower() in name.lower():
+                model = resnet_BP_p_m
+            elif "_scpl_m".lower() in name.lower():
+                model = resnet_SCPL_m
+            elif "_dascpl_m".lower() in name.lower():
+                model = resnet_DASCPL_m
+        except:
+            raise RuntimeError("[Model Error] This model ({}) need to be imported from related package. But this package can not be found. The original bug message - \"{}\".".format(name, e))
+
+    ## DASCPL dynamic
+    elif name in ["resnet_DASCPL_da_m", "resnet_DASCPL_dr_m"]:
+        try:
+            ## Dynamic testing of DASCPL (They don't have profiler ver.)
+            from model.vision_multi_dynamic import  resnet18_DASCPL_da_m, resnet18_DASCPL_dr_m
+
+            if "_da_".lower() in name.lower():
+                model = resnet18_DASCPL_da_m
+            elif "_dr_".lower() in name.lower():
+                model = resnet18_DASCPL_dr_m
+        except:
+            raise RuntimeError("[Model Error] This model ({}) need to be imported from related package. But this package can not be found. The original bug message - \"{}\".".format(name, e))
 
     # Other - Single GPU 
     elif name == "VGG_AL":

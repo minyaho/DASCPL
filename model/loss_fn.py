@@ -6,26 +6,81 @@ import math
 import torch.nn.functional as F
 
 class NLP_Predictor(nn.Module):
-    def __init__(self, input_dim, out_dim, hid_dim=100, act_fun = nn.Tanh(), device=None):
-        super().__init__()
-        self.layer = nn.Sequential(nn.Linear(input_dim, hid_dim), act_fun, nn.Linear(hid_dim, out_dim))
+    def __init__(self, pred_type, input_dim, out_dim, hid_dim=100, device=None, act_fun = nn.Tanh()):
+        super(NLP_Predictor, self).__init__()
+        self.layer = make_predictor(pred_type, input_dim, hid_dim, out_dim, device, act_fun)
         self.loss = nn.CrossEntropyLoss()
     def forward(self, x):
         return self.layer(x)
     
 class Vision_Predictor(nn.Module):
-    def __init__(self, out_dim, input_dim, hid_dim=2500, device=None):
-        super().__init__()
+    def __init__(self, pred_type, out_dim, input_dim, hid_dim=2500, device=None, act_fun=nn.Sigmoid(), shape=None):
+        super(Vision_Predictor, self).__init__()
         self.device = device
-        self.layer = nn.Sequential(Flatten(),
-                                #    nn.Linear(in_channels, hid_dim, bias=False),
-                                #    nn.BatchNorm1d(hid_dim),
-                                #    nn.ReLU(inplace=True), # hidden layer
-                                #    nn.Linear(hid_dim, num_classes)) # output layer
-                                nn.Linear(input_dim, hid_dim), nn.Sigmoid(), nn.Linear(hid_dim, out_dim))
+        self.pred_type = pred_type
+        self.avg_pool_f = False
+        self.avg_pool = None
+        
+        # self.avg_base = 4
+        if shape >= 4:
+            self.avg_base = 4
+        else:
+            self.avg_base = 2
+
+        if "avg" in self.pred_type:
+            if shape < self.avg_base:
+                self.avg_pool_f == False
+            else:
+                print("[LC Loss] use nn.AdaptiveAvgPool2d({},{})".format(self.avg_base,self.avg_base))
+                reshape = int(shape/self.avg_base)
+                input_dim = int(input_dim / (shape*shape)) * reshape * reshape
+                self.avg_pool = nn.AdaptiveAvgPool2d((reshape, reshape))
+                self.avg_pool_f = True
+
+        self.layer = nn.Sequential(Flatten(), make_predictor(pred_type, input_dim, hid_dim, out_dim, device, act_fun))
         self.loss = nn.CrossEntropyLoss()
 
-    def forward(self, x, y=None):
+    def forward(self, x):
+        if self.avg_pool_f == True:
+            # print("before,",x.shape)
+            x = self.avg_pool(x)
+            # print("End,", x.shape)
+        output = self.layer(x)
+        return output
+
+class NLP_Projector(nn.Module):
+    def __init__(self, proj_type, inp_dim, hid_dim, out_dim, device, temperature=None):
+        super(NLP_Projector, self).__init__()
+        self.layer = make_projector(proj_type, inp_dim=inp_dim, out_dim=out_dim, hid_dim=hid_dim, device=device, temperature=temperature)
+    def forward(self, x):
+        return self.layer(x)
+    
+class Vision_Projector(nn.Module):
+    def __init__(self, proj_type, inp_dim, hid_dim, out_dim, device, temperature=None, shape=None):
+        super(Vision_Projector, self).__init__()
+        self.device = device
+        self.proj_type = proj_type
+        self.avg_pool_f = False
+        self.avg_pool = None
+        self.avg_base = 2
+
+        if "avg" in self.proj_type:
+            if shape <= self.avg_base:
+                self.avg_pool_f == False
+            else:
+                print("[CL Loss] use nn.AdaptiveAvgPool2d({},{})".format(self.avg_base,self.avg_base))
+                reshape = int(shape/self.avg_base)
+                inp_dim = int(inp_dim / (shape*shape)) * reshape * reshape
+                self.avg_pool = nn.AdaptiveAvgPool2d((reshape, reshape))
+                self.avg_pool_f = True
+
+        self.layer = nn.Sequential(Flatten(), make_projector(proj_type, inp_dim=inp_dim, out_dim=out_dim, hid_dim=hid_dim, device=device, temperature=temperature))
+
+    def forward(self, x):
+        if self.avg_pool_f == True:
+            # print("before,",x.shape)
+            x = self.avg_pool(x)
+            # print("End,", x.shape)
         output = self.layer(x)
         return output
 
@@ -92,8 +147,12 @@ class LocalLoss(nn.Module):
                 assert len(_dim) == 2, "[CL Loss Error] You only can set two dimension (hidden and output dimension) in projection head."
                 _dim = [_dim[-1], _dim[-2]]
         elif mode == "pred":
-            assert "m" in _set, "[Predictor Loss Error] You can only set MLP (m) type in projection head."
-            assert len(_dim) in [0, 1], "[Predictor Loss Error] You only can set or not set one dimension (hidden dimension) in predictor."
+            if ("m" in _set) or ("mb" in _set):
+            # assert "m" in _set, "[Predictor Loss Error] You can only set MLP (m) type in projection head."
+                assert len(_dim) in [0, 1], "[Predictor Loss Error] You only can set or not set one dimension (hidden dimension) in predictor."
+            else:
+                assert "l" in _set, "[Predictor Loss Error] You can only set MLP (m) or Linear (l) type in projection head."
+                assert len(_dim)==0, "[Predictor Loss Error] You can not set dimension (hidden dimension) in linear predictor."
             if len(_dim) == 0:
                 _dim = [hid_dim]
                 
@@ -122,6 +181,7 @@ class LocalLoss(nn.Module):
         return loss
     
     def _predict_loss(self, x, label):
+        loss = 0
         hat_y = self.predictor(x if 'non-detach' in self.pred_type else x.detach())
         loss = self.predictor.loss(hat_y, label)
         return loss
@@ -158,12 +218,9 @@ class VisionLocalLoss(LocalLoss):
 
         self.input_dim = int(c_in * shape * shape)
         if self.proj_type != None:
-            self.projector = nn.Sequential(Flatten(), make_projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature))
+            self.projector = Vision_Projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature, shape=shape)
         if (self.pred_type != None) and ("none" not in self.pred_type):
-            self.predictor = Vision_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1], device=self.device)
-            info_str = "[Predictor Loss] Use local MLP predictor, in_dim: {}, hid_dim: {}, out_dim: {}, Device: {}".format(self.input_dim, self.pred_dim[-1], self.num_classes, self.device)
-            deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
-            print(info_str + deatch_str)
+            self.predictor = Vision_Predictor(self.pred_type, out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1], device=self.device, shape=shape)
 
 class NLPLocalLoss(LocalLoss):
     def __init__(self, temperature=0.1, input_dim=300, hid_dim=300, out_dim=300,
@@ -171,12 +228,9 @@ class NLPLocalLoss(LocalLoss):
 
         super(NLPLocalLoss, self).__init__(temperature, input_dim, hid_dim, out_dim , num_classes, proj_type, pred_type, device)
         if self.proj_type != None:
-            self.projector = make_projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature)
+            self.projector = NLP_Projector(self.proj_type, inp_dim=self.input_dim, out_dim=self.proj_dim[0], hid_dim=self.proj_dim[1], device=self.device, temperature=self.temperature)
         if self.pred_type != None:
-            self.predictor = NLP_Predictor(out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1] ,device=self.device)
-            info_str = "[Predictor Loss] Use local MLP predictor, in_dim: {}, out_dim: {}, hid_dim: {}, Device: {}".format(self.input_dim, self.num_classes, self.pred_dim[-1], self.device)
-            deatch_str = ", detach input: " + ("disable" if 'non-detach' in self.pred_type else "enable")
-            print(info_str + deatch_str)
+            self.predictor = NLP_Predictor(self.pred_type, out_dim=self.num_classes, input_dim=self.input_dim, hid_dim=self.pred_dim[-1] ,device=self.device)
 
 class NLP_Tail(nn.Module):
     def __init__(self, inp_dim, out_dim, hid_dim=100, act_fun = nn.Tanh(), device=None):
@@ -459,3 +513,29 @@ def make_projector(proj_type, inp_dim, hid_dim, out_dim, device, temperature=Non
             )
     else:
         raise RuntimeError("ContrastiveLoss: Error setting of the projective head")
+        
+def make_predictor(pred_type, input_dim, hid_dim, out_dim, device, act_fun = nn.Sigmoid()):
+    if "i" in pred_type:
+        # Identity function
+        info_str = "[Local Classifier] Type: Identity function, Device: {}".format(device)
+        deatch_str = ", detach input: " + ("disable" if 'non-detach' in pred_type else "enable")
+        print(info_str + deatch_str)
+        return nn.Identity()
+    elif "l" in pred_type:
+        # Linear
+        info_str = "[LC] Type: Linear, in_dim: {}, out_dim: {}, Device: {}".format(input_dim, out_dim, device)
+        deatch_str = ", detach input: " + ("disable" if 'non-detach' in pred_type else "enable")
+        print(info_str + deatch_str)
+        return nn.Sequential(nn.Linear(input_dim, out_dim))
+    elif "m" in pred_type:
+        # MLP
+        info_str = "[LC] Type: MLP, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(input_dim, out_dim, hid_dim, device)
+        deatch_str = ", detach input: " + ("disable" if 'non-detach' in pred_type else "enable")
+        print(info_str + deatch_str)
+        return nn.Sequential(nn.Linear(input_dim, hid_dim), act_fun, nn.Linear(hid_dim, out_dim))
+    elif "mb" in pred_type:
+        # MLP
+        info_str = "[LC] Type: MLP with BN, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(input_dim, out_dim, hid_dim, device)
+        deatch_str = ", detach input: " + ("disable" if 'non-detach' in pred_type else "enable")
+        print(info_str + deatch_str)
+        return nn.Sequential(nn.Linear(input_dim, hid_dim), nn.BatchNorm1d(hid_dim), act_fun, nn.Linear(hid_dim, out_dim))
