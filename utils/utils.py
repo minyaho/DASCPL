@@ -51,7 +51,6 @@ class MultiGPUModel(nn.Module):
 
         return loss
 
-    
 class ProfilerMultiGPUModel(MultiGPUModel):
     def _loss_backward_update(self, layer_model:list, optimizer, hat_y:list, true_y:list, diff_device=False, name=None):
         assert type(layer_model)==list, 'Arguments error! Your input (layer_model) must be a list.'
@@ -194,7 +193,8 @@ class ResultMeter(object):
 
     def __str__(self):
         return self.container.__str__()
-    
+
+# Accuracy Calculation Method 1 (fast)
 def accuracy(output, target):
     with torch.no_grad():
         bsz = target.shape[0]
@@ -203,7 +203,8 @@ def accuracy(output, target):
         correct = pred.eq(target.view(1, -1).expand_as(pred))
         acc = correct[0].view(-1).float().sum(0, keepdim=True).mul_(100 / bsz)
         return acc
-    
+
+# Accuracy Calculation Method 2 (slow)
 def flat_accuracy(preds, labels, ignore_index=-1):
     preds = preds.cpu().numpy()
     labels = labels.cpu().numpy()
@@ -302,11 +303,17 @@ class CPUThread(threading.Thread):
 def setup_seed(configs):
     seed = int(configs['seed'])
     speedUP_f = configs['speedup']
+    deterministic_f = configs['determine']
     # https://pytorch.org/docs/stable/notes/randomness.html
     if seed == -1:
         if speedUP_f:
             torch.backends.cudnn.benchmark = True # Restore benchmark to improve performance
             print("[INFO] Use \"torch.backends.cudnn.benchmark\"")
+        if deterministic_f:
+            torch.backends.cudnn.deterministic = True
+            print("[INFO] Use \"torch.backends.cudnn.deterministic\"")
+        else:
+            print("yes")
         return "Random"
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -435,15 +442,9 @@ class ModelResultRecorder(object):
         _epoch_key = [key for key in self.model_train_history[_times_key[0]].keys()]
         _acc_key = [key for key in self.model_train_history[_times_key[0]][_epoch_key[0]][self.train_acc]]
 
-        # print("_times_key: {}".format(_times_key))
-        # print("_epoch_key: {}".format(_epoch_key))
-        # print("_acc_key: {}".format(_acc_key))
-
         num_times = len(_times_key)
         num_epoch = len(_epoch_key)
         num_acc = len(_acc_key)
-
-        # print("num_times: {}, num_epoch: {}, num_acc: {}".format(num_times, num_epoch, num_acc))
 
         _train_acc = np.zeros((num_times, num_epoch, num_acc))
         _test_acc = np.zeros((num_times, num_epoch, num_acc))

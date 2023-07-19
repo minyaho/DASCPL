@@ -281,24 +281,9 @@ class ContrastiveLoss(nn.Module):
         self.proj_type = proj_type.split(",")
         self.projector = nn.Sequential(Flatten(), make_projector(proj_type, input_neurons, mid_neurons, out_neurons, self.device))
 
-        # if "dcl" in proj_type:
-        #     self.loss_type = 'dcl'
-        #     print("[CL Loss] Use dcl loss")
-        # else:
-        #     self.loss_type = 'infoNCE'
-        #     print("[CL Loss] Use infoNCE loss")
-
         if "predict" in self.proj_type:
             self.classifier = vision_Tail(num_classes=num_classes, in_channels=input_neurons, shape=shape, device=self.device)
             print("[CL Loss] Use local classifier, in_dim: {}, out_dim: {}, Device: {}".format(input_neurons, num_classes, self.device))
-
-        # if out_neurons == 0:
-        #     self.linear = nn.Sequential(Flatten())#.to(self.device)
-        # elif mid_neurons == 0:
-        #     self.linear = nn.Sequential(Flatten(), nn.Linear(input_neurons, out_neurons))#.to(self.device)
-        # else:
-        #     self.linear = nn.Sequential(Flatten(), nn.Linear(input_neurons, mid_neurons), nn.ReLU(), nn.Linear(mid_neurons, out_neurons))#.to(self.device)
-
     
     def train_mode(self, x, label):
         label2 = label.clone()
@@ -312,11 +297,6 @@ class ContrastiveLoss(nn.Module):
         logits_max, _ = torch.max(logits, dim=1, keepdim=True)
         logits = logits - logits_max.detach()
         denom = torch.exp(logits) * denom_mask
-        # if self.loss_type == 'dcl':
-        #     invert_make = torch.ones_like(mask, device=x.device) - mask
-        #     denom = torch.exp(logits) * invert_make #denom_mask
-        # else:
-        #     denom = torch.exp(logits) * denom_mask
         prob = logits - torch.log(denom.sum(1, keepdim=True))
         loss = (denom_mask * mask * prob).sum(1) / mask.sum(1)
         loss = -loss
@@ -414,13 +394,6 @@ class NLPContrastiveLoss(nn.Module):
         self.proj_type = proj_type.split(",")
         self.projector = make_projector(self.proj_type, inp_dim, out_dim, hid_dim, self.device)
 
-        # if "dcl" in proj_type:
-        #     self.loss_type = 'dcl'
-        #     print("[CL Loss] Use dcl loss")
-        # else:
-        #     self.loss_type = 'infoNCE'
-        #     print("[CL Loss] Use infoNCE loss")
-
         if "predict" in self.proj_type:
             self.classifier = NLP_Tail(inp_dim, class_num, hid_dim, act_fun = nn.Tanh(), device=self.device)
             print("[CL Loss] Use local classifier, in_dim: {}, out_dim: {}, h_dim: {}, Device: {}".format(inp_dim, class_num, hid_dim, device)
@@ -437,11 +410,6 @@ class NLPContrastiveLoss(nn.Module):
         logits = torch.div(torch.matmul(x1, x1.T), self.temperature)
         logits_max, _ = torch.max(logits, dim=1, keepdim=True)
         logits = logits - logits_max.detach()
-        # if self.loss_type == 'dcl':
-        #     invert_make = torch.ones_like(mask, device=x.device) - mask
-        #     denom = torch.exp(logits) * invert_make #denom_mask
-        # else:
-        #     denom = torch.exp(logits) * denom_mask
         denom = torch.exp(logits) * denom_mask
         prob = logits - torch.log(denom.sum(1, keepdim=True))
         loss = (denom_mask * mask * prob).sum(1) / mask.sum(1)

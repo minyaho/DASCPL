@@ -66,6 +66,9 @@ class VGG_Predictor(nn.Module):
         return output
 
 class resnet18_Head(nn.Module):
+    """
+    Old ResNet Input Stem (Default)
+    """
     def __init__(self, device='cpu'):
         super(resnet18_Head,self).__init__()
         self.device = device
@@ -76,6 +79,9 @@ class resnet18_Head(nn.Module):
         return output
 
 class resnet18_Predictor(nn.Module):
+    """
+    Old ResNet Output Stem (Default)
+    """
     def __init__(self, in_dim=512, num_classes=100, device='cpu'):
         super(resnet18_Predictor,self).__init__()
         self.device = device
@@ -88,6 +94,9 @@ class resnet18_Predictor(nn.Module):
         return output
 
 class resnet18_Block(nn.Module):
+    """
+    Old ResNet Block (Default)
+    """
     def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type=None, pred_type=None, num_classes=None, temperature=0.1, device='cpu'):
         super(resnet18_Block,self).__init__()
         self.shape = shape
@@ -145,7 +154,7 @@ class resnet18_SCPL_Block(resnet18_Block):
 """Modified from https://github.com/batuhan3526/ResNet50_on_Cifar_100_Without_Transfer_Learning """
 class BasicBlock(nn.Module):
     """
-    Basic Block for resnet 18 and resnet 34
+    Basic Block for resnet 18 and resnet 34 ()
     """
     expansion = 1
 
@@ -170,7 +179,7 @@ class BasicBlock(nn.Module):
 
 class resnet_Head(nn.Module):
     """
-    ResNet Input Stem
+    ResNet Input Stem (This is used only in specific ResNet architectures)
     """
     def __init__(self, device='cpu'):
         super(resnet_Head,self).__init__()
@@ -182,7 +191,7 @@ class resnet_Head(nn.Module):
 
 class resnet_Predictor(nn.Module):
     """
-    ResNet Output Stem with AvgPool
+    ResNet Output Stem with AvgPool (This is used only in specific ResNet architectures)
     """
     def __init__(self, in_dim, num_classes, avg_pool=None, device='cpu'):
         super(resnet_Predictor,self).__init__()
@@ -201,7 +210,7 @@ class resnet_Predictor(nn.Module):
 
 class resnet_Block(nn.Module):
     """
-    ResNet Block
+    ResNet Block (This is used only in specific ResNet architectures)
     """
     def __init__(self, cfg, shape, in_channels, avg_pool=None, proj_type=None, pred_type=None, num_classes=None, device='cpu'):
         super(resnet_Block,self).__init__()

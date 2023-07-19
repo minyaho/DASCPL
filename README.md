@@ -1,4 +1,11 @@
 # Dynamic Accumulated Supervised Contrastive Parallel Learning
+
+Supervised Contrastive Parallel Learning (SCPL) is a novel approach that decouples BP by multiple local training objectives and supervised contrastive learning. It transforms the original deep network's long gradient flow into multiple short gradient flows and trains the parameters in different layers independently through a pipelined design. This method achieves faster training speed than BP by addressing the inefficiency caused by backward locking in backpropagation. 
+
+We improved the architecture of SCPL, which enables dynamic layer accumulation, forward shortcuts, and early exits. This new architecture is called Dynamic Accumulated Supervised Contrastive Parallel Learning (DASCPL). Based on these two features, DASCPL offers higher flexibility and adaptability compared to SCPL while maintaining consistent learning capabilities.
+
+Now, both DASCPL and SCPL can be demonstrated in the visual and natural language domains through this repository.
+
 ## Environment
 | Name | Version | Note |
 | --- | --- | --- |
@@ -7,9 +14,18 @@
 | PyTorch | `1.12.1+cu113` | Include `0.13.1+cu113` version of torchvision. </br> You can download it from [here](https://pytorch.org/get-started/previous-versions/#v1121). |
 ||| Others in the `requirements.txt` file. </br> Please use pip to install them. |
 
+The packages listed above are the ones we use in our development environment. However, this environment may encounter some issues during testing. To address this, we have provided an alternative list of environments which we have tried as follows:
+
+| Name | Version | Note |
+| --- | --- | --- |
+| Python | `3.8.12` | Please install it from [Anaconda](https://www.anaconda.com/products/distribution). |
+| CUDA | `12.0.1` | You can download it from [here](https://developer.nvidia.com/cuda-12-0-1-download-archive). |
+| PyTorch | `2.0.1+cu118` | Include `0.15.2+cu118` version of torchvision. </br> You can download it from [here](https://pytorch.org/get-started/previous-versions/#v201) or [here](https://pytorch.org/). |
+||| Others in the `requirements.txt` file. </br> Please use pip to install them. |
+
 ## Setup
 ### Make an Environment
-
+#### General use
 Tested under Python 3.8.12 on Ubuntu 20.04.
 Install the required packages by running the following command:
 
@@ -18,6 +34,14 @@ $ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 -
 $ pip install -r requirements.txt
 ```
 
+We also have provided an alternative list of environments which we have tried as follows:
+
+```bash
+$ pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+$ pip install -r requirements.txt
+```
+
+#### Docker use 
 Additionally, you can simulate the experiment using Docker with the following steps:
 
 ```bash
@@ -25,14 +49,58 @@ $ docker pull nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
 $ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
 $ docker start dascpl_env
 $ docker exec -it dascpl_env /bin/bash
-$ apt-get update -y && apt-get upgrade -y
+$ apt-get update -y && apt-get upgrade -y && apt-get install git wget -y
 $ wget --quiet https://repo.anaconda.com/archive/Anaconda3-2022.05-Linux-x86_64.sh -O ~/anaconda.sh && /bin/bash ~/anaconda.sh -b && rm ~/anaconda.sh && source /root/anaconda3/bin/activate && conda init
 $ conda create --name dascpl python=3.8.12 -y && conda activate dascpl
 $ git clone https://github.com/minyaho/DASCPL.git
 $ cd DASCPL/
 $ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 $ pip install -r requirements.txt
+$ python -m ipykernel install --user --name dascpl --display-name "dascpl"
 $ conda activate dascpl # used before every time experiment
+$ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="dascpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "dascpl". 
+```
+
+We also have provided an alternative list of environments which we have tried as follows:
+
+```bash
+$ docker pull nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04
+$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04
+$ docker start dascpl_env
+$ docker exec -it dascpl_env /bin/bash
+$ apt-get update -y && apt-get upgrade -y && apt-get install git wget -y
+$ wget --quiet https://repo.anaconda.com/archive/Anaconda3-2022.05-Linux-x86_64.sh -O ~/anaconda.sh && /bin/bash ~/anaconda.sh -b && rm ~/anaconda.sh && source /root/anaconda3/bin/activate && conda init
+$ conda create --name dascpl python=3.8.12 -y && conda activate dascpl
+$ git clone https://github.com/minyaho/DASCPL.git
+$ cd DASCPL/
+$ pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+$ pip install -r requirements.txt
+$ python -m ipykernel install --user --name dascpl --display-name "dascpl"
+$ conda activate dascpl # used before every time experiment
+$ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="dascpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "dascpl". 
+```
+
+If you don't want to create the environment yourself, you can also directly get a pre-prepared image from Docker Hub.
+
+- CUDA `11.4.1` and Pytorch `1.12.1+cu113`
+
+```
+$ docker pull minyaho/dascpl:c1141p1121
+$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1141p1121
+$ docker start dascpl_env
+$ docker exec -it dascpl_env /bin/bash
+$ conda activate dascpl
+```
+
+- CUDA `11.4.1` and Pytorch `1.12.1+cu113`
+```
+$ docker pull minyaho/dascpl:c1201p201
+$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1201p201
+$ docker start dascpl_env
+$ docker exec -it dascpl_env /bin/bash
+$ conda activate dascpl
 ```
 
 ### Download Datasets

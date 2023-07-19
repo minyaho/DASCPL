@@ -7,28 +7,6 @@ from utils.vision import conv_1x1_bn, conv_layer_bn, Flatten
 from .loss_fn import ContrastiveLoss, PredSimLoss
 from .vision_single import BasicBlock
 
-# class BasicBlock(nn.Module):
-#     expansion = 1
-
-#     def __init__(self, in_channels, out_channels, stride=1):
-#         super(BasicBlock, self).__init__()
-#         self.conv1 = conv_layer_bn(in_channels, out_channels, nn.LeakyReLU(inplace=True), stride, False)
-#         self.conv2 = conv_layer_bn(out_channels, out_channels, None, 1, False)
-#         self.relu = nn.LeakyReLU(inplace=True)
-
-#         self.shortcut = nn.Sequential()
-
-#         # the shortcut output dimension is not the same with residual function
-#         if stride != 1:
-#             self.shortcut = conv_layer_bn(in_channels, out_channels, None, stride, False) # Original SCPL settings
-#             # self.shortcut = conv_1x1_bn(in_channels, out_channels, None, stride, False) # New settings. Maybe this is the correct setting for ResNet18
-
-#     def forward(self, x):
-#         out = self.conv1(x)
-#         out = self.conv2(out)
-#         out = self.relu(out + self.shortcut(x))
-#         return out
-
 class resnet18(SingleGPUModel):
     def __init__(self, num_classes=100):
         super(resnet18, self).__init__()

@@ -4,7 +4,6 @@ from utils import Optimizer, CPUThread, MultiGPUModel
 from itertools import chain
 from collections import OrderedDict
 from .vision_single import VGG_Block, VGG_Predictor, resnet18_Head, resnet18_Block, resnet18_Predictor, resnet_Predictor
-# from transformer.encoder import TransformerEncoder
 
 class Vision_MultiGPU(MultiGPUModel):
     def __init__(self, configs):

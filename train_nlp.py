@@ -36,7 +36,9 @@ def get_args():
     parser.add_argument('--train_eval_times', type=int, help='The number of epochs between evaluations during training.', default=1)
     parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
     parser.add_argument('--noise_rate', type=float, help='Noise rate of labels in training dataset (default is 0 for no noise).', default=0.0)
-    parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
+    parser.add_argument('--speedup', type=str, help='This option will use "\"torch.backends.cudnn.benchmark\" to accelerate training. If you want to use it, please input \"t\".', default="f")
+    parser.add_argument('--determine', type=str, help='This option will use \"torch.backends.cudnn.deterministic\" to enable the deterministic convolutional algorithm. \
+                        If you want to use it, please input \"t\".', default="f")
 
     # NLP Options
     parser.add_argument('--max_len', type=int, help='Maximum length for the sequence of input samples', default="60")
@@ -84,6 +86,7 @@ def read_config(args=None):
         configs['temperature'] = args.temperature
         configs['noise_rate'] = args.noise_rate
         configs['speedup'] = True if args.speedup.lower() in ['t', 'true'] else False
+        configs['determine'] = True if args.determine.lower() in ['t', 'true'] else False
 
         configs['gpus'] = gpu_setting(args.gpus, args.layers)
 

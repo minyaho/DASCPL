@@ -34,7 +34,9 @@ def get_args():
     parser.add_argument('--train_eval', type=str, help='Flag to enable evaluation during training (only for multi-GPU models).', default="true")
     parser.add_argument('--train_eval_times', type=int, help='The number of epochs between evaluations during training.', default=1)
     parser.add_argument('--temperature', type=float, help='Temperature parameter of contrastive loss.', default=0.1)
-    parser.add_argument('--speedup', type=str, help='This option will use \"torch.backends.cudnn.benchmark\" to speedup training. If want to use, please type \"t\".', default="f")
+    parser.add_argument('--speedup', type=str, help='This option will use "\"torch.backends.cudnn.benchmark\" to accelerate training. If you want to use it, please input \"t\".', default="f")
+    parser.add_argument('--determine', type=str, help='This option will use \"torch.backends.cudnn.deterministic\" to enable the deterministic convolutional algorithm. \
+                        If you want to use it, please input \"t\".', default="f")
 
     # Vision Options
     parser.add_argument('--aug_type', type=str, help='Type of Data augmentation. \
@@ -72,6 +74,7 @@ def read_config(args=None):
         configs["train_eval_times"] = args.train_eval_times
         configs['temperature'] = args.temperature
         configs['speedup'] = True if args.speedup.lower() in ['t', 'true'] else False
+        configs['determine'] = True if args.determine.lower() in ['t', 'true'] else False
         configs['trigger_epochs'] = None if args.trigger_epochs == "" else args.trigger_epochs
         
         layers = 4
