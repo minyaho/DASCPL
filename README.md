@@ -86,20 +86,24 @@ If you don't want to create the environment yourself, you can also directly get 
 
 - CUDA `11.4.1` and Pytorch `1.12.1+cu113`
 
-```
+```bash
 $ docker pull minyaho/dascpl:c1141p1121
 $ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1141p1121
 $ docker start dascpl_env
 $ docker exec -it dascpl_env /bin/bash
+$ git clone https://github.com/minyaho/DASCPL.git
+$ cd DASCPL/
 $ conda activate dascpl
 ```
 
 - CUDA `11.4.1` and Pytorch `1.12.1+cu113`
-```
+```bash
 $ docker pull minyaho/dascpl:c1201p201
 $ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1201p201
 $ docker start dascpl_env
 $ docker exec -it dascpl_env /bin/bash
+$ git clone https://github.com/minyaho/DASCPL.git
+$ cd DASCPL/
 $ conda activate dascpl
 ```
 
