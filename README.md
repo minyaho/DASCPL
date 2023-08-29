@@ -45,41 +45,57 @@ $ pip install -r requirements.txt
 Additionally, you can simulate the experiment using Docker with the following steps:
 
 ```bash
+# Install Env
 $ docker pull nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
-$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
-$ docker start dascpl_env
-$ docker exec -it dascpl_env /bin/bash
-$ apt-get update -y && apt-get upgrade -y && apt-get install git wget -y
+$ docker run --gpus all --name dascpl_env -it -p 19000:8888 --shm-size="10g" nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
+$ # If "nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04" is not available, use "minyaho/cuda:11.4.1-cudnn8-devel-ubuntu20.04
+$ apt-get update -y 
+$ apt-get upgrade -y
+$ apt-get install git wget -y
 $ wget --quiet https://repo.anaconda.com/archive/Anaconda3-2022.05-Linux-x86_64.sh -O ~/anaconda.sh && /bin/bash ~/anaconda.sh -b && rm ~/anaconda.sh && source /root/anaconda3/bin/activate && conda init
 $ conda create --name dascpl python=3.8.12 -y && conda activate dascpl
-$ git clone https://github.com/minyaho/DASCPL.git
-$ cd DASCPL/
+$ cd ~ && git clone https://github.com/minyaho/dascpl.git
+$ cd ~/dascpl/
 $ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 $ pip install -r requirements.txt
 $ python -m ipykernel install --user --name dascpl --display-name "dascpl"
-$ conda activate dascpl # used before every time experiment
+$ exit
+$ docker stop dascpl_env
+
+# Used before every time experiment
+$ docker start dascpl_env
+$ docker exec -it dascpl_env /bin/bash
+$ cd ~/dascpl/ && conda activate dascpl 
 $ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
-$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="dascpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "dascpl". 
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="scpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "scpl". 
 ```
 
 We also have provided an alternative list of environments which we have tried as follows:
 
 ```bash
+# Install Env
 $ docker pull nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04
-$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04
-$ docker start dascpl_env
-$ docker exec -it dascpl_env /bin/bash
-$ apt-get update -y && apt-get upgrade -y && apt-get install git wget -y
+$ docker run --gpus all --name dascpl_env -it -p 19000:8888 --shm-size="10g" nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04
+$ # If "nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04" is not available, use "minyaho/cuda:12.0.1-cudnn8-devel-ubuntu20.04"
+$ apt-get update -y 
+$ apt-get upgrade -y
+$ apt-get install git wget -y
 $ wget --quiet https://repo.anaconda.com/archive/Anaconda3-2022.05-Linux-x86_64.sh -O ~/anaconda.sh && /bin/bash ~/anaconda.sh -b && rm ~/anaconda.sh && source /root/anaconda3/bin/activate && conda init
 $ conda create --name dascpl python=3.8.12 -y && conda activate dascpl
-$ git clone https://github.com/minyaho/DASCPL.git
-$ cd DASCPL/
+$ cd ~ && git clone https://github.com/minyaho/dascpl.git
+$ cd ~/dascpl/
 $ pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --index-url https://download.pytorch.org/whl/cu118
 $ pip install -r requirements.txt
 $ python -m ipykernel install --user --name dascpl --display-name "dascpl"
-$ conda activate dascpl # used before every time experiment
+$ exit
+$ docker stop dascpl_env
+
+# Used before every time experiment
+$ docker start dascpl_env
+$ docker exec -it dascpl_env /bin/bash
+$ cd ~/dascpl/ && conda activate dascpl # used before every time experiment
 $ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
-$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="dascpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "dascpl". 
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="scpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "scpl". 
 ```
 
 If you don't want to create the environment yourself, you can also directly get a pre-prepared image from Docker Hub.
@@ -87,24 +103,36 @@ If you don't want to create the environment yourself, you can also directly get 
 - CUDA `11.4.1` and Pytorch `1.12.1+cu113`
 
 ```bash
+# Install Env
 $ docker pull minyaho/dascpl:c1141p1121
-$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1141p1121
+$ docker run --gpus all --name dascpl_env -it -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1141p1121
+$ cd ~ && git clone https://github.com/minyaho/dascpl.git
+$ exit
+$ docker stop dascpl_env
+
+# Used before every time experiment
 $ docker start dascpl_env
 $ docker exec -it dascpl_env /bin/bash
-$ git clone https://github.com/minyaho/DASCPL.git
-$ cd DASCPL/
-$ conda activate dascpl
+$ cd ~/dascpl/ && conda activate dascpl
+$ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="scpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "scpl". 
 ```
 
-- CUDA `11.4.1` and Pytorch `1.12.1+cu113`
+- CUDA `12.0.1` and Pytorch `2.0.1+cu118`
 ```bash
+# Install Env
 $ docker pull minyaho/dascpl:c1201p201
-$ docker run --gpus all --name dascpl_env -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1201p201
+$ docker run --gpus all --name dascpl_env -it -p 19000:8888 --shm-size="10g" minyaho/dascpl:c1201p201
+$ cd ~ && git clone https://github.com/minyaho/dascpl.git
+$ exit
+$ docker stop dascpl_env
+
+# Used before every time experiment
 $ docker start dascpl_env
 $ docker exec -it dascpl_env /bin/bash
-$ git clone https://github.com/minyaho/DASCPL.git
-$ cd DASCPL/
-$ conda activate dascpl
+$ cd ~/dascpl/ && conda activate dascpl
+$ # pip install notebook==6.4.8 # If you want to use Jupyter Notebook.
+$ # jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root --NotebookApp.token="scpl"# If you want to use Jupyter Notebook, please execute this command and access it through port 19000 and token is "scpl". 
 ```
 
 ### Download Datasets

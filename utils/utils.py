@@ -313,7 +313,7 @@ def setup_seed(configs):
             torch.backends.cudnn.deterministic = True
             print("[INFO] Use \"torch.backends.cudnn.deterministic\"")
         else:
-            print("yes")
+            pass
         return "Random"
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
